@@ -1,0 +1,384 @@
+<html>
+<head>
+    <title>JS Wiring Tests</title>
+    <script type="text/javascript" src="js-wiring.js"></script>
+    <style type="text/css">
+        html, body {font-family: sans-serif;}
+        h1 {font-size: 1.2em;}
+        p {margin: 0 0 .25em; padding: .25em 0 0; border-top: 1px solid #EEE;}
+        .PASSED {color: green;}
+        .FAILED {color: orange;}
+        .ERROR {color: red;}
+    </style>
+</head>
+<body>
+    <h1>JS Wiring Tests</h1>
+
+    <script type="text/javascript">
+
+        function runTest( label, fn ) {
+            var result = '', error = '';
+            try {
+                result = fn() ? 'PASSED' : 'FAILED';
+            } catch( e ) {
+                result = 'ERROR';
+                error = e;
+            }
+            document.write(
+                '<p>{0}: <span class="{1}">{1}</span>{2}</p>'
+                .replace( '{0}', label ).replace( /\{1\}/g, result ).replace( '{2}', error ? ': ' + error : '' )
+            );
+        }
+
+        //////////////////////////
+
+        function Foo() {
+        }
+        Foo.prototype = {
+            one: 1,
+            two: null
+        };
+
+        function Bar() {
+        }
+        Bar.prototype = {
+            setOne: function(v) {
+                this.oneBySetter = v;
+            },
+            setTwo: function(v) {
+                this.twoBySetter = v;
+            },
+            myInit: function() {
+                this.propByInitMethod = this.oneBySetter;
+            }
+        };
+
+        function Baz( one, two ) {
+            this.oneByCtor = one;
+            this.twoByCtor = two;
+        }
+
+        function TestWiringAwareSub() {};
+        TestWiringAwareSub.prototype = new Wiring.WiringAware();
+        TestWiringAwareSub.prototype.getFoo1 = function() {
+            return this.wiring.get( 'foo1' );
+        };
+
+        function TestValueResolver() {};
+        TestValueResolver.prototype = new Wiring.ValueResolver();
+        TestValueResolver.prototype.prefix = "dingleberry";
+        TestValueResolver.prototype.resolve = function( key ) {
+            return "dingle_" + key + "_berry";
+        };
+
+
+        runTest( 'Basic instantiation', function() {
+            Wiring.add( {
+                testBasic: {
+                    type: Foo
+                }
+            } );
+            var obj = Wiring.get( 'testBasic' );
+            return obj instanceof Foo && obj.one == 1 && obj.two == null;
+        });
+
+        runTest( 'Singleton behavior', function() {
+            Wiring.add( {
+                testSingleton: {
+                    type: Foo
+                }
+            } );
+            var obj1 = Wiring.get( 'testSingleton' ),
+                obj2 = Wiring.get( 'testSingleton' );
+            return obj1 === obj2;
+        } );
+
+        runTest( 'Non-singleton behavior', function() {
+            Wiring.add( {
+                testNonSingleton: {
+                    type: Foo,
+                    singleton: false
+                }
+            } );
+            var obj1 = Wiring.get( 'testNonSingleton' ),
+                obj2 = Wiring.get( 'testNonSingleton' );
+            return obj1 !== obj2;
+        } );
+
+        runTest( 'Direct property injection', function() {
+            Wiring.add( {
+                testProperties : {
+                    type: Foo,
+                    properties: {
+                        one: 2
+                    }
+                }
+            } );
+            var obj = Wiring.get( 'testProperties' );
+            return obj.one == 2;
+        } );
+
+        runTest( 'Setter method injection', function() {
+            Wiring.add( {
+                testSetters: {
+                    type: Bar,
+                    properties: {
+                        one: 1
+                    }
+                }
+            } );
+            var obj = Wiring.get( 'testSetters' );
+            return obj.oneBySetter == 1;
+        } );
+
+        runTest( 'Dereference other wired objects', function() {
+            Wiring.add( {
+                testRefTarget : {
+                    type: Foo,
+                    properties: {
+                        one: 2
+                    }
+                },
+                testRef : {
+                    type: Foo,
+                    properties: {
+                        two: 'ref:testRefTarget'
+                    }
+                }
+            } );
+            var obj = Wiring.get( 'testRef' );
+            return obj.two instanceof Foo && obj.two.one == 2;
+        } );
+
+        runTest( 'Dereference members of property Object/Array values', function() {
+            Wiring.add( {
+                testMemberRefTarget: {
+                    type: Foo
+                },
+                testMemberRef : {
+                    type: Foo,
+                    properties: {
+                        one: { prop1: 1, prop2: "ref:testMemberRefTarget" },
+                        two: [ 1, "ref:testMemberRefTarget" ]
+                    }
+                }
+            } );
+            var obj = Wiring.get( 'testMemberRef' ),
+                refObj = Wiring.get( 'testMemberRefTarget' );
+            return obj.one.prop1 == 1 && obj.one.prop2 === refObj && obj.two[0] == 1 && obj.two[1] === refObj;
+        } );
+
+        runTest( 'Dereference other wired objects (deep)', function() {
+            Wiring.add( {
+                testDeepRefTargetDeep : {
+                    type: Foo,
+                    properties: {
+                        one: 2
+                    }
+                },
+                testDeepRefTarget : {
+                    type: Foo,
+                    properties: {
+                        two: 'ref:testDeepRefTargetDeep'
+                    }
+                },
+                testDeepRef: {
+                    type: Bar,
+                    properties: {
+                        two: 'ref:testDeepRefTarget'
+                    }
+                }
+            } );
+            var obj = Wiring.get( 'testDeepRef' );
+            return obj.twoBySetter instanceof Foo && obj.twoBySetter.two instanceof Foo && obj.twoBySetter.two.one == 2;
+        } );
+
+        runTest( 'Constructor arg injection', function() {
+            Wiring.add( {
+                testCtorArgs: {
+                    type: Baz,
+                    ctorArgs: [ 1, 2 ]
+                }
+            } );
+            var obj = Wiring.get( 'testCtorArgs' );
+            return obj.oneByCtor == 1 && obj.twoByCtor == 2;
+        } );
+
+        runTest( 'Constructor arg dereferencing', function() {
+            Wiring.add( {
+                testCtorArgRefTarget: {
+                    type: Bar,
+                    properties: {
+                        one: 1
+                    }
+                },
+                testCtorArgRef: {
+                    type: Baz,
+                    ctorArgs: [ 1, 'ref:testCtorArgRefTarget' ]
+                }
+            } );
+            var obj = Wiring.get( 'testCtorArgRef' );
+            return obj.twoByCtor instanceof Bar && obj.twoByCtor.oneBySetter == 1;
+        } );
+
+        runTest( 'Calling initMethod', function() {
+            Wiring.add( {
+                testInitMethod: {
+                    type: Bar,
+                    properties: {
+                        one: 32
+                    },
+                    initMethod: 'myInit'
+                }
+            } );
+            var obj = Wiring.get( 'testInitMethod' );
+            return obj.propByInitMethod == 32;
+        } );
+
+        runTest( 'Inheriting from parent, overriding properties', function() {
+            Wiring.add( {
+                testParent : {
+                    type: Foo,
+                    properties: {
+                        one: 2
+                    }
+                },
+                testParentSub: {
+                    parent: 'testParent',
+                    properties: {
+                        two: 'overridden'
+                    }
+                }
+            } );
+            var obj = Wiring.get( 'testParentSub' );
+            return obj instanceof Foo && obj.one == 2 && obj.two == 'overridden';
+        } );
+
+        runTest( 'Inheriting from parent, overriding ctorArgs', function() {
+            Wiring.add( {
+                testParentCtorArgsRef: {
+                    type: Bar,
+                    properties: {
+                        one: 32
+                    }
+                },
+                testParentCtorArgs: {
+                    type: Baz,
+                    ctorArgs: [ 1, 2 ]
+                },
+                testParentCtorArgsSub: {
+                    parent: 'testParentCtorArgs',
+                    ctorArgs: { '1': 'ref:testParentCtorArgsRef' }
+                }
+            } );
+            var obj = Wiring.get( 'testParentCtorArgsSub' );
+            return obj.oneByCtor == 1 && obj.twoByCtor.oneBySetter == 32;
+        } );
+
+        runTest( 'Factory - basic', function() {
+            Wiring.add( {
+                testFactoryTarget : {
+                    type: Foo,
+                    singleton: false
+                },
+                testFactory: {
+                    type: Wiring.Factory,
+                    properties: {
+                        refId: 'testFactoryTarget'
+                    }
+                }
+            } );
+            var factory = Wiring.get( 'testFactory' ),
+                obj1 = factory.createInstance(),
+                obj2 = factory.createInstance();
+            return obj1 !== obj2 && obj1.one == obj2.one == 1;
+        } );
+
+        runTest( 'Factory - override properties', function() {
+            Wiring.add( {
+                testFactoryOverrideTarget : {
+                    type: Foo,
+                    singleton: false
+                },
+                testFactoryOverride: {
+                    type: Wiring.Factory,
+                    properties: {
+                        refId: 'testFactoryOverrideTarget'
+                    }
+                }
+            } );
+            var factory = Wiring.get( 'testFactoryOverride' ),
+                obj = factory.createInstance( {
+                    properties: { two: 'overridden' }
+                } );
+            return obj.one == 1 && obj.two == 'overridden';
+        } );
+
+        runTest( 'Factory - override ctorArgs', function() {
+            Wiring.add( {
+                testFactoryOverrideCtorArgsTarget : {
+                    type: Baz,
+                    ctorArgs: [ 1, 2 ]
+                },
+                testFactoryOverrideCtorArgs: {
+                    type: Wiring.Factory,
+                    properties: {
+                        refId: 'testFactoryOverrideCtorArgsTarget'
+                    }
+                }
+            } );
+            var factory = Wiring.get( 'testFactoryOverrideCtorArgs' ),
+                obj = factory.createInstance( {
+                    ctorArgs: { '1': 'overridden' }
+                } );
+            return obj.oneByCtor == 1 && obj.twoByCtor == 'overridden';
+        } );
+
+        runTest( 'WiringAware', function() {
+            Wiring.add( {
+                testWiringAware: {
+                    type: TestWiringAwareSub
+                }
+            } );
+            var obj = Wiring.get( 'testWiringAware' );
+            return obj.wiring === Wiring && obj.getFoo1() === Wiring.get( 'foo1' );
+        } );
+
+        runTest( 'Custom ValueResolver', function() {
+            Wiring.addValueResolver( new TestValueResolver() );
+            Wiring.add( {
+                testValueResolver : {
+                    type: Foo,
+                    properties: {
+                        one: "dingleberry:one",
+                        two: "dingleberry:two"
+                    }
+                }
+            } );
+            var obj = Wiring.get( 'testValueResolver' );
+            return obj.one == 'dingle_one_berry' && obj.two == 'dingle_two_berry';
+        } );
+
+        runTest( 'Multiple wiring containers', function() {
+            Wiring.add( {
+                testMultiContainers: {
+                    type: Foo
+                }
+            } );
+
+            var otherWiring = new Wiring.constructor();
+            otherWiring.add( {
+                testMultiContainers: {
+                    type: Foo
+                }
+            } );
+
+            var obj1 = Wiring.get( 'testMultiContainers' ),
+                obj2 = otherWiring.get( 'testMultiContainers' );
+            return obj1 !== obj2 && obj1.constructor === obj2.constructor && obj1.one == obj2.one && obj1.two == obj2.two;
+        } );
+
+    </script>
+
+</body>
+</html>
