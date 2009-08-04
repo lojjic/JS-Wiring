@@ -26,33 +26,34 @@ var Wiring = (function() {
          * dereferences "ref:*" string values to other wired instances.
          */
         expand: function( val ) {
-            var idx, res;
+            var i, v, p, idx, resolver, result;
+
             // Deep copy of array members
             if( Object.prototype.toString.call( val ) == '[object Array]' ) {
-                var arr = [], i, v;
+                result = [];
                 for( i = 0; v = val[ i ]; i++ ) {
-                    arr.push( this.expand( v ) );
+                    result.push( this.expand( v ) );
                 };
-                return arr;
             }
             // Deep copy of complex object properties
             else if( typeof val == "object" && val !== null ) {
-                var obj = {}, p;
+                result = {};
                 for( p in val ) {
-                    obj[ p ] = this.expand( val[ p ] );
+                    result[ p ] = this.expand( val[ p ] );
                 }
-                return obj;
             }
             // String values with "foo:" prefixes: if there is a matching registered
             // ValueResolver, invoke it and return the result
             else if( typeof val == "string" && ( idx = val.indexOf( ":" ) ) > 0 ) {
-                res = this.wiring._resolvers[ val.substring( 0, idx ) ];
-                return ( res ? res.resolve( val.substring( idx + 1 ) ) : val );
+                resolver = this.wiring._resolvers[ val.substring( 0, idx ) ];
+                result = ( resolver ? resolver.resolve( val.substring( idx + 1 ) ) : val );
             }
             // Everything else, just use literally
             else {
-                return val;
+                result = val;
             }
+
+            return result;
         },
 
         /**
@@ -95,20 +96,21 @@ var Wiring = (function() {
          * @return Object
          */
         getInstance: function() {
-            var def = this.getCascadedDef();
+            var p, m, v, inst, i, len, args, argRefs,
+                def = this.getCascadedDef();
 
             if( this._instance && def.singleton ) {
                 return this._instance;
             }
 
-            var p, m, v, inst,
-                args = [], argRefs = [];
+            args = [];
+            argRefs = [];
 
             if( def.ctorArgs.length > 0 ) {
                 // Construct a new instance, passing along any ctorArgs.
                 // Would be nice to find a less ugly way to do this, but I haven't found an
                 // approach that doesn't result in an invalid prototype chain.
-                for( var i = 0, len = def.ctorArgs.length; i < len; i++ ) {
+                for( i = 0, len = def.ctorArgs.length; i < len; i++ ) {
                     args.push( this.expand( def.ctorArgs[ i ] ) );
                     argRefs.push( "a[" + i + "]" );
                 }
@@ -157,8 +159,8 @@ var Wiring = (function() {
      * @return the first argument with any other arguments' properties merged in.
      */
     function merge( o1 /*, o2, o3, ...*/ ) {
-        for( var i = 1, len = arguments.length; i < len; i++ ) {
-            var oN = arguments[ i ], p;
+        for( var i = 1, len = arguments.length, oN, p; i < len; i++ ) {
+            oN = arguments[ i ];
             if( oN ) {
                 for( p in oN ) {
                     o1[ p ] = oN[ p ];
