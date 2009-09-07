@@ -86,7 +86,7 @@
                 }
             } );
             var obj = Wiring.get( 'testBasic' );
-            return obj instanceof Foo && obj.one == 1 && obj.two == null;
+            return obj instanceof Foo && obj.one === 1 && obj.two === null;
         });
 
         runTest( 'Singleton behavior', function() {
@@ -122,7 +122,7 @@
                 }
             } );
             var obj = Wiring.get( 'testProperties' );
-            return obj.one == 2;
+            return obj.one === 2;
         } );
 
         runTest( 'Setter method injection', function() {
@@ -135,7 +135,7 @@
                 }
             } );
             var obj = Wiring.get( 'testSetters' );
-            return obj.oneBySetter == 1;
+            return obj.oneBySetter === 1;
         } );
 
         runTest( 'Dereference other wired objects', function() {
@@ -154,7 +154,7 @@
                 }
             } );
             var obj = Wiring.get( 'testRef' );
-            return obj.two instanceof Foo && obj.two.one == 2;
+            return obj.two instanceof Foo && obj.two.one === 2;
         } );
 
         runTest( 'Dereference members of property Object/Array values', function() {
@@ -172,7 +172,7 @@
             } );
             var obj = Wiring.get( 'testMemberRef' ),
                 refObj = Wiring.get( 'testMemberRefTarget' );
-            return obj.one.prop1 == 1 && obj.one.prop2 === refObj && obj.two[0] == 1 && obj.two[1] === refObj;
+            return obj.one.prop1 === 1 && obj.one.prop2 === refObj && obj.two[0] === 1 && obj.two[1] === refObj;
         } );
 
         runTest( 'Dereference members of property Object/Array values (deep)', function() {
@@ -190,7 +190,7 @@
             } );
             var obj = Wiring.get( 'testDeepMemberRef' ),
                 refObj = Wiring.get( 'testDeepMemberRefTarget' );
-            return obj.one.prop1 == 1 && obj.one.prop2[1].prop === refObj && obj.two[0] == 1 && obj.two[1].prop[1].prop === refObj;
+            return obj.one.prop1 === 1 && obj.one.prop2[1].prop === refObj && obj.two[0] === 1 && obj.two[1].prop[1].prop === refObj;
         } );
 
         runTest( 'Dereference other wired objects (deep)', function() {
@@ -215,7 +215,7 @@
                 }
             } );
             var obj = Wiring.get( 'testDeepRef' );
-            return obj.twoBySetter instanceof Foo && obj.twoBySetter.two instanceof Foo && obj.twoBySetter.two.one == 2;
+            return obj.twoBySetter instanceof Foo && obj.twoBySetter.two instanceof Foo && obj.twoBySetter.two.one === 2;
         } );
 
         runTest( 'Constructor arg injection', function() {
@@ -226,7 +226,7 @@
                 }
             } );
             var obj = Wiring.get( 'testCtorArgs' );
-            return obj.oneByCtor == 1 && obj.twoByCtor == 2;
+            return obj.oneByCtor === 1 && obj.twoByCtor === 2;
         } );
 
         runTest( 'Constructor arg dereferencing', function() {
@@ -243,7 +243,7 @@
                 }
             } );
             var obj = Wiring.get( 'testCtorArgRef' );
-            return obj.twoByCtor instanceof Bar && obj.twoByCtor.oneBySetter == 1;
+            return obj.twoByCtor instanceof Bar && obj.twoByCtor.oneBySetter === 1;
         } );
 
         runTest( 'Calling initMethod', function() {
@@ -257,7 +257,7 @@
                 }
             } );
             var obj = Wiring.get( 'testInitMethod' );
-            return obj.propByInitMethod == 32;
+            return obj.propByInitMethod === 32;
         } );
 
         runTest( 'Inheriting from parent, overriding properties', function() {
@@ -276,7 +276,7 @@
                 }
             } );
             var obj = Wiring.get( 'testParentSub' );
-            return obj instanceof Foo && obj.one == 2 && obj.two == 'overridden';
+            return obj instanceof Foo && obj.one === 2 && obj.two === 'overridden';
         } );
 
         runTest( 'Inheriting from parent, overriding ctorArgs', function() {
@@ -297,7 +297,7 @@
                 }
             } );
             var obj = Wiring.get( 'testParentCtorArgsSub' );
-            return obj.oneByCtor == 1 && obj.twoByCtor.oneBySetter == 32;
+            return obj.oneByCtor === 1 && obj.twoByCtor.oneBySetter === 32;
         } );
 
         runTest( 'Factory - basic', function() {
@@ -316,7 +316,7 @@
             var factory = Wiring.get( 'testFactory' ),
                 obj1 = factory.createInstance(),
                 obj2 = factory.createInstance();
-            return obj1 !== obj2 && obj1.one == obj2.one == 1;
+            return obj1 !== obj2 && obj1.one === obj2.one && obj1.one === 1;
         } );
 
         runTest( 'Factory - override properties', function() {
@@ -336,7 +336,7 @@
                 obj = factory.createInstance( {
                     properties: { two: 'overridden' }
                 } );
-            return obj.one == 1 && obj.two == 'overridden';
+            return obj.one === 1 && obj.two === 'overridden';
         } );
 
         runTest( 'Factory - override ctorArgs', function() {
@@ -356,7 +356,7 @@
                 obj = factory.createInstance( {
                     ctorArgs: { '1': 'overridden' }
                 } );
-            return obj.oneByCtor == 1 && obj.twoByCtor == 'overridden';
+            return obj.oneByCtor === 1 && obj.twoByCtor === 'overridden';
         } );
 
         runTest( 'WiringAware', function() {
@@ -381,7 +381,7 @@
                 }
             } );
             var obj = Wiring.get( 'testValueResolver' );
-            return obj.one == 'dingle_one_berry' && obj.two == 'dingle_two_berry';
+            return obj.one === 'dingle_one_berry' && obj.two === 'dingle_two_berry';
         } );
 
         runTest( 'Multiple wiring containers', function() {
@@ -400,7 +400,7 @@
 
             var obj1 = Wiring.get( 'testMultiContainers' ),
                 obj2 = otherWiring.get( 'testMultiContainers' );
-            return obj1 !== obj2 && obj1.constructor === obj2.constructor && obj1.one == obj2.one && obj1.two == obj2.two;
+            return obj1 !== obj2 && obj1.constructor === obj2.constructor && obj1.one === obj2.one && obj1.two === obj2.two;
         } );
 
         document.write( '<p class="timer">all tests completed in ' + ( new Date().getTime() - start ) + 'ms</p>' );
