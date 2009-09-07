@@ -292,8 +292,9 @@ var Wiring = (function() {
          * @return Object
          */
         getCascadedDef: function() {
-            var cache = '_cascadedDef', def, par, casc;
-            if( !( cache in this ) ) {
+            var cache = '_cascadedDef', def, par, casc,
+                obj = this[ cache ];
+            if( !obj ) {
                 def = this.def;
                 par = this.getParent();
                 if( par ) {
@@ -303,9 +304,9 @@ var Wiring = (function() {
                     casc.properties = merge( {}, par.properties, def.properties );
                     def = casc;
                 }
-                this[ cache ] = merge( {}, Def.defaults, def );
+                obj = this[ cache ] = merge( {}, Def.defaults, def );
             }
-            return this[ cache ];
+            return obj;
         },
 
         /**
