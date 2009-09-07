@@ -168,6 +168,24 @@
             return obj.one.prop1 == 1 && obj.one.prop2 === refObj && obj.two[0] == 1 && obj.two[1] === refObj;
         } );
 
+        runTest( 'Dereference members of property Object/Array values (deep)', function() {
+            Wiring.add( {
+                testDeepMemberRefTarget: {
+                    type: Foo
+                },
+                testDeepMemberRef : {
+                    type: Foo,
+                    properties: {
+                        one: { prop1: 1, prop2: [ 'a', { prop: "ref:testDeepMemberRefTarget" } ] },
+                        two: [ 1, { prop: [ 'a', { prop: "ref:testDeepMemberRefTarget" } ] } ]
+                    }
+                }
+            } );
+            var obj = Wiring.get( 'testDeepMemberRef' ),
+                refObj = Wiring.get( 'testDeepMemberRefTarget' );
+            return obj.one.prop1 == 1 && obj.one.prop2[1].prop === refObj && obj.two[0] == 1 && obj.two[1].prop[1].prop === refObj;
+        } );
+
         runTest( 'Dereference other wired objects (deep)', function() {
             Wiring.add( {
                 testDeepRefTargetDeep : {
