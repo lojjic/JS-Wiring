@@ -301,7 +301,7 @@ var Wiring = (function() {
                     casc = merge( {}, par, def );
                     casc.ctorArgs = merge( [], par.ctorArgs, def.ctorArgs );
                     casc.properties = merge( {}, par.properties, def.properties );
-                    return casc;
+                    def = casc;
                 }
                 this[ cache ] = merge( {}, Def.defaults, def );
             }
