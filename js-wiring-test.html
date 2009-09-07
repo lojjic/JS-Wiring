@@ -6,6 +6,7 @@
         html, body {font-family: sans-serif;}
         h1 {font-size: 1.2em;}
         p {margin: 0 0 .25em; padding: .25em 0 0; border-top: 1px solid #EEE;}
+        .timer {color: #666; font-style: italic; float: right;}
         .PASSED {color: green;}
         .FAILED {color: orange;}
         .ERROR {color: red;}
@@ -17,16 +18,21 @@
     <script type="text/javascript">
 
         function runTest( label, fn ) {
-            var result = '', error = '';
+            var result = '', error = '', start, end;
             try {
+                start = new Date().getTime();
                 result = fn() ? 'PASSED' : 'FAILED';
+                end = new Date().getTime();
             } catch( e ) {
                 result = 'ERROR';
                 error = e;
             }
             document.write(
-                '<p>{0}: <span class="{1}">{1}</span>{2}</p>'
-                .replace( '{0}', label ).replace( /\{1\}/g, result ).replace( '{2}', error ? ': ' + error : '' )
+                '<p>{0}: <span class="{1}">{1}</span>{2} <span class="timer">completed in {3}ms</span></p>'
+                .replace( '{0}', label )
+                .replace( /\{1\}/g, result )
+                .replace( '{2}', error ? ': ' + error : '' )
+                .replace( '{3}', end - start )
             );
         }
 
@@ -71,6 +77,7 @@
             return "dingle_" + key + "_berry";
         };
 
+        var start = new Date().getTime();
 
         runTest( 'Basic instantiation', function() {
             Wiring.add( {
@@ -395,6 +402,8 @@
                 obj2 = otherWiring.get( 'testMultiContainers' );
             return obj1 !== obj2 && obj1.constructor === obj2.constructor && obj1.one == obj2.one && obj1.two == obj2.two;
         } );
+
+        document.write( '<p class="timer">all tests completed in ' + ( new Date().getTime() - start ) + 'ms</p>' );
 
     </script>
 
