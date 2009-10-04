@@ -2,7 +2,7 @@
    onevar: true, debug: false, on: false, eqeqeq: true */
 
 /**
- * <h1>Wiring: Dependency Injection for JavaScript</h1>
+ * <h1>JS Wiring: Dependency Injection for JavaScript</h1>
  *
  * <p>This is a lightweight dependency injection container for JavaScript objects.
  * It provides a simple mechanism for configuring object instances and how they
@@ -55,7 +55,7 @@
  *     objectTwo: {
  *         type: MyJSClass2,
  *         properties: {
- *             myDependency: 'ref:objectOne'
+ *             myDependency: '{ref:objectOne}'
  *         }
  *     }
  * } );</code></pre>
@@ -81,16 +81,16 @@
  * 
  * <ul>
  *     <li>A literal value: String, Number, or Boolean</li>
- *     <li>A value "placeholder". This is a String that begins with a prefix that has been registered
- *         with a ValueResolver, followed by a colon.  The placeholder string will be replaced by an
+ *     <li>A value "placeholder". This is a String that begins and ends with curly braces and contains a prefix that
+ *         matches that of a registered ValueResolver instance.  The placeholder string will be replaced by an
  *         expanded value returned by the <code>ValueResolver</code>.  By default the container understands 
- *         only the "ref:objectDefId" placeholder, which gets replaced by an instantiated and fully-configured
+ *         only the "{ref:objectDefId}" placeholder, which gets replaced by an instantiated and fully-configured
  *         object from another definition in the wiring container.  This is how managed objects are
  *         wired into other managed objects as dependencies.</li>
  *     <li>An Array or Object; when evaluated by the container these will be deep-copied into a new
  *         Array/Object.  During the copy each member will be treated as a VALUE of its own,
  *         allowing recursive value expansion.  In other words, value placeholders such as
- *         "ref:objectDefId" can occur at any depth in the object/array structure.
+ *         "{ref:objectDefId}" can occur at any depth in the object/array structure.
  * </ul>
  * 
  * <table>
@@ -105,9 +105,8 @@
  *         <tr>
  *             <td>type</td>
  *             <td>Function</td>
- *             <td>The class which will be instantiated. Each definition is required to have
- *                 a type, though this property can be omitted on a definition that references
- *                 a parent if that parent declares its type.</td>
+ *             <td>The class which will be instantiated. If not specified for a definition or
+ *                 any of its parents, will default to <code>Object</code>.</td>
  *         </tr>
  *         <tr>
  *             <td>singleton</td>
@@ -150,13 +149,56 @@
  * 
  * <h2>Factories</h2>
  *
- * <p>TODO</p>
+ * <p>While the dependency injection pattern is great for configuring single dependencies
+ * which are created once up-front, it does not handle the common case where an object needs to
+ * be able to create multiple instances of another class on-the-fly dependent on runtime data.
+ * We need a mechanism by which dependencies can be instantiated on demand and still themselves
+ * be configured by the wiring container.</p>
+ *
+ * <p>To handle this, you can use <code>Wiring.Factory</code>. This is a very simple class with
+ * a single <code>refId</code> property, which you will configure to point to the object definition
+ * that will be instantiated, and a single <code>createInstance</code> method which the controlling
+ * code will invoke to create an instance. An example:</p>
+ *
+ * <pre><code>Wiring.add( {
+ *     objectOne: {
+ *         type: MyJSClass,
+ *         singleton: false,
+ *         properties: {
+ *             prop1: 'some value 1'
+ *             prop2: 'some value 2'
+ *         }
+ *     },
+ *     objectTwo: {
+ *         type: MyJSClass2,
+ *         properties: {
+ *             myFactory: '{ref:objectOneFactory}'
+ *         }
+ *     },
+ *     objectOneFactory: {
+ *         type: Wiring.Factory,
+ *         properties: {
+ *             refId: 'objectOne'
+ *         }
+ *     }
+ * } );</code></pre>
+ *
+ * <p>This configures objectTwo with a Factory instance, which it can use to create as many instances
+ * of fully-configured MyJSClass objects as it needs, by calling <code>this.myFactory.createInstance()</code>.
+ * It can also optionally pass along an object argument to the <code>createInstance</code> method; this
+ * object can follow the same structure as a normal object definition (see section "Object Definition
+ * Structure" above) and allows you to override individual aspects of the main object definition. For
+ * instance:</p>
+ *
+ * <pre><code>this.myFactory.createInstance( { properties: { prop1: 'some other value' } } )</code></pre>
+ *
+ * <p>This call will return an instance of MyJSClass with properties prop1='some other value' and prop2='some value 2'.</p>
  * 
- * <h2>Custom <code>ValueResolver</code>s</h2>
+ * <h2>Custom ValueResolvers</h2>
  * 
- * <p>As mentioned above, in addition to the built-in "ref:objectDefId" placeholder, you can
+ * <p>As mentioned above, in addition to the built-in "{ref:objectDefId}" placeholder, you can
  * create custom <code>ValueResolver</code>s and register them with arbitrary prefixes. For
- * example, you might want to define a "cfg:" placeholder which resolves configuration values
+ * example, you might want to define a "{cfg:foo}" placeholder which resolves configuration values
  * from some other configuration object. To do this, you would extend <code>Wiring.ValueResolver</code>
  * like so:</p>
  * 
@@ -169,7 +211,7 @@
  * 
  * Wiring.addValueResolver( new CfgResolver() );</code></pre>
  * 
- * <p>Now any "cfg:" placeholders in object definitions will get their values from the CfgResolver.
+ * <p>Now any "{cfg:foo}" placeholders in object definitions will get their values from the CfgResolver.
  * This is a handy abstraction because the object configurations do not have to implement logic
  * concerning how to retrieve the values, and if the underlying source of the values changes then you
  * only have to modify the ValueResolver implementation and not the configurations themselves.</p>
@@ -237,14 +279,15 @@ var Wiring = (function() {
         initMethod: null,
         parent: null
     };
+    Def.PLACEHOLDER_RE = /^\{(\w+):(.+)\}$/;
     Def.prototype = {
         /**
          * Expand a property or ctorArgs definition value into a real value that can be
          * injected into an object instance. Makes deep copies of arrays/objects, and
-         * dereferences "ref:*" string values to other wired instances.
+         * dereferences placeholder string values by invoking the matching ValueResolver.
          */
         expand: function( val ) {
-            var i, v, p, idx, resolver, result;
+            var i, v, p, phMatch, resolver, result;
 
             // Deep copy of array members
             if( Object.prototype.toString.call( val ) === '[object Array]' ) {
@@ -262,11 +305,11 @@ var Wiring = (function() {
                     }
                 }
             }
-            // String values with "foo:" prefixes: if there is a matching registered
-            // ValueResolver, invoke it and return the result
-            else if( typeof val === "string" && ( idx = val.indexOf( ":" ) ) > 0 ) {
-                resolver = this.wiring._resolvers[ val.substring( 0, idx ) ];
-                result = ( resolver ? resolver.resolve( val.substring( idx + 1 ) ) : val );
+            // String values matching placeholder regexp: if there is a matching registered
+            // ValueResolver for the placeholder's prefix, invoke it and return the result
+            else if( typeof val === "string" && ( phMatch = val.match( Def.PLACEHOLDER_RE ) ) ) {
+                resolver = this.wiring._resolvers[ phMatch[1] ];
+                result = ( resolver ? resolver.resolve( phMatch[2] ) : val );
             }
             // Everything else, just use literally
             else {
@@ -340,7 +383,7 @@ var Wiring = (function() {
                 }
                 /*jslint evil: true */
                 inst = ( new Function( 'T', 'a', "return new T(" + argRefs.join(',') + ")" ) )( def.type, args );
-                // TODO implement protection against recursive ctorArgs 'ref:' values, which will cause an infinite loop
+                // TODO implement protection against recursive ctorArgs '{ref:*}' values, which will cause an infinite loop
                 /*jslint evil: false */
             } else {
                 // Fast path for no-argument constructor
@@ -412,13 +455,14 @@ var Wiring = (function() {
     /**
      * @class Wiring.ValueResolver
      * Base class for resolving values from a key. When an object which inherits from this class
-     * is added to the Wiring container, then its prefix will be registered to identify wired
-     * values which should be resolved rather than used literally.  Matching values must be
-     * strings beginning with the prefix and followed by a colon; everything after the colon
-     * will be used as the key passed to the .resolve() method.
-     * See also the RefResolver subclass, which is automatically registered to enable "ref:" values.
-     * Other implementations may be added by the application, for instance a "config:" resolver
-     * for resolving config entries or a "msg:" resolver for resolving localized strings.
+     * is registered with the Wiring container via Wiring.addValueResolver, then when a "{prefix:key}"
+     * placeholder string value is encountered in an object definition, the container will look for
+     * a registered ValueResolver which matches the prefix, and invoke its 'resolve' method using the
+     * placeholder's key.
+     * See also the RefResolver subclass, which is automatically registered to enable "{ref:*}" values
+     * for dereferencing other object instances from the wiring container.
+     * Other implementations may be added by the application, for instance a "{cfg:*}" resolver
+     * for resolving config entries or a "{msg:*}" resolver for resolving localized strings.
      */
     function ValueResolver() {}
     ValueResolver.prototype = merge( new WiringAware(), {
@@ -439,7 +483,7 @@ var Wiring = (function() {
 
     /**
      * Built-in ValueResolver implementation which resolves string values starting with
-     * "ref:" to instances of other wired objects.  The value following the "ref:" prefix
+     * "{ref:*}" to instances of other wired objects.  The value following the prefix
      * will be used to identify the wired object to resolve and be set as the value.
      * An instance of this resolver will automatically be registered with the Wiring
      * container; to override it simply register another resolver with the same prefix.
@@ -486,7 +530,7 @@ var Wiring = (function() {
         },
 
         /**
-         * Add a ValueResolver instance to be registered for handling prefixed string values
+         * Add a ValueResolver instance to be registered for handling placeholder string values
          * @param {Wiring.ValueResolver} resolver
          */
         addValueResolver: function( resolver ) {
@@ -525,7 +569,7 @@ Wiring.add( {
     poi: {
         type: LMI.Mapping.EDDKFindOnMapPoi,
         singleton: false,
-        flyoutFactory: "ref:flyoutFactory"
+        flyoutFactory: "{ref:flyoutFactory}"
     },
 
     flyoutFactory: {
@@ -540,10 +584,10 @@ Wiring.add( {
         singleton: false,
         properties: {
             contentBuilders: [
-                "ref:flyoutAddressBuilder",
-                "ref:flyoutActionsBuilder",
-                "ref:flyoutFindNearbyBuilder",
-                "ref:flyoutRatingsBuilder"
+                "{ref:flyoutAddressBuilder}",
+                "{ref:flyoutActionsBuilder}",
+                "{ref:flyoutFindNearbyBuilder}",
+                "{ref:flyoutRatingsBuilder}"
             ]
         }
     },
@@ -555,7 +599,7 @@ Wiring.add( {
     map: {
         type: LMI.Mapping.EDDKMap,
         properties: {
-            controls: [ "ref:zoomControl", "ref:panControl" ]
+            controls: [ "{ref:zoomControl}", "{ref:panControl}" ]
         }
     },
 
@@ -580,8 +624,8 @@ Wiring.add( {
     mapSearch: {
         type: LMI.MapSearch,
         properties: {
-            map: "ref:map",
-            poiFactory: "ref:poiFactory",
+            map: "{ref:map}",
+            poiFactory: "{ref:poiFactory}",
             listings: LMI.Data.listings
         },
         initMethod: "init"

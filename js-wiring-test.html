@@ -5,7 +5,7 @@
     <style type="text/css">
         html, body {font-family: sans-serif;}
         h1 {font-size: 1.2em;}
-        p {margin: 0 0 .25em; padding: .25em 0 0; border-top: 1px solid #EEE;}
+        p {margin: 0 0 .25em; padding: .25em 0 0; border-top: 1px solid #EEE; clear: both;}
         .timer {color: #666; font-style: italic; float: right;}
         .PASSED {color: green;}
         .FAILED {color: orange;}
@@ -149,7 +149,7 @@
                 testRef : {
                     type: Foo,
                     properties: {
-                        two: 'ref:testRefTarget'
+                        two: '{ref:testRefTarget}'
                     }
                 }
             } );
@@ -165,8 +165,8 @@
                 testMemberRef : {
                     type: Foo,
                     properties: {
-                        one: { prop1: 1, prop2: "ref:testMemberRefTarget" },
-                        two: [ 1, "ref:testMemberRefTarget" ]
+                        one: { prop1: 1, prop2: "{ref:testMemberRefTarget}" },
+                        two: [ 1, "{ref:testMemberRefTarget}" ]
                     }
                 }
             } );
@@ -183,8 +183,8 @@
                 testDeepMemberRef : {
                     type: Foo,
                     properties: {
-                        one: { prop1: 1, prop2: [ 'a', { prop: "ref:testDeepMemberRefTarget" } ] },
-                        two: [ 1, { prop: [ 'a', { prop: "ref:testDeepMemberRefTarget" } ] } ]
+                        one: { prop1: 1, prop2: [ 'a', { prop: "{ref:testDeepMemberRefTarget}" } ] },
+                        two: [ 1, { prop: [ 'a', { prop: "{ref:testDeepMemberRefTarget}" } ] } ]
                     }
                 }
             } );
@@ -204,13 +204,13 @@
                 testDeepRefTarget : {
                     type: Foo,
                     properties: {
-                        two: 'ref:testDeepRefTargetDeep'
+                        two: '{ref:testDeepRefTargetDeep}'
                     }
                 },
                 testDeepRef: {
                     type: Bar,
                     properties: {
-                        two: 'ref:testDeepRefTarget'
+                        two: '{ref:testDeepRefTarget}'
                     }
                 }
             } );
@@ -239,7 +239,7 @@
                 },
                 testCtorArgRef: {
                     type: Baz,
-                    ctorArgs: [ 1, 'ref:testCtorArgRefTarget' ]
+                    ctorArgs: [ 1, '{ref:testCtorArgRefTarget}' ]
                 }
             } );
             var obj = Wiring.get( 'testCtorArgRef' );
@@ -293,7 +293,7 @@
                 },
                 testParentCtorArgsSub: {
                     parent: 'testParentCtorArgs',
-                    ctorArgs: { '1': 'ref:testParentCtorArgsRef' }
+                    ctorArgs: { '1': '{ref:testParentCtorArgsRef}' }
                 }
             } );
             var obj = Wiring.get( 'testParentCtorArgsSub' );
@@ -375,8 +375,8 @@
                 testValueResolver : {
                     type: Foo,
                     properties: {
-                        one: "dingleberry:one",
-                        two: "dingleberry:two"
+                        one: "{dingleberry:one}",
+                        two: "{dingleberry:two}"
                     }
                 }
             } );
