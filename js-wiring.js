@@ -262,6 +262,19 @@ var Wiring = (function() {
 
 
     /**
+     * @class Mergeable
+     * @private
+     * Wrapper class for an object or array which serves as a marker that the value
+     * should be merged with the corresponding object or array in the parent definition,
+     * rather than replacing it.
+     * @param {Object|Array} obj
+     */
+    function Mergeable( obj ) {
+        this.value = obj;
+    }
+
+
+    /**
      * @class Def (Internal) A single object wiring definition
      * @param {Wiring} wiring - the wiring object to which this definition belongs; used to
      *         look up other referenced definitions.
@@ -328,6 +341,17 @@ var Wiring = (function() {
             return ( p && this.wiring._defs[ p ] ) || null;
         },
 
+        mergeProps: function( o1, o2 ) {
+            var p, v1, v2;
+            for( p in o2 ) {
+                if( o2.hasOwnProperty( p ) ) {
+                    if( o2[ p ] instanceof Mergeable ) {
+                        
+                    }
+                }
+            }
+        },
+
         /**
          * Calculate and return a full definition template object, inheriting from
          * any configured parent definitions.  The resulting value will be cached
@@ -343,8 +367,8 @@ var Wiring = (function() {
                 if( par ) {
                     par = par.getCascadedDef();
                     casc = merge( {}, par, def );
-                    casc.ctorArgs = merge( [], par.ctorArgs, def.ctorArgs );
-                    casc.properties = merge( {}, par.properties, def.properties );
+                    casc.ctorArgs = this.mergeProps( merge( [], par.ctorArgs ), def.ctorArgs );
+                    casc.properties = this.mergeProps( merge( {}, par.properties ), def.properties );
                     def = casc;
                 }
                 obj = this[ cache ] = merge( {}, Def.defaults, def );
@@ -538,6 +562,15 @@ var Wiring = (function() {
             this._resolvers[ resolver.prefix ] = resolver;
         },
 
+        /**
+         * Specify that an object or array literal value should be merged with the
+         * corresponding value in the parent definition, rather than replacing it.
+         * @param obj
+         */
+        merge: function( obj ) {
+            return new Mergeable( obj );
+        },
+
         WiringAware: WiringAware,
         Factory : Factory,
         ValueResolver: ValueResolver
@@ -551,96 +584,4 @@ var Wiring = (function() {
      */
     return new W();
 })();
-
-
-
-
-
-
-/*
-Wiring.add( {
-    poiFactory: {
-        type: Wiring.Factory,
-        properties: {
-            refId: 'poi'
-        }
-    },
-
-    poi: {
-        type: LMI.Mapping.EDDKFindOnMapPoi,
-        singleton: false,
-        flyoutFactory: "{ref:flyoutFactory}"
-    },
-
-    flyoutFactory: {
-        type: Wiring.Factory,
-        properties: {
-            refId: "flyout"
-        }
-    },
-
-    flyout: {
-        type: LMI.Mapping.EDDKListingFlyout,
-        singleton: false,
-        properties: {
-            contentBuilders: [
-                "{ref:flyoutAddressBuilder}",
-                "{ref:flyoutActionsBuilder}",
-                "{ref:flyoutFindNearbyBuilder}",
-                "{ref:flyoutRatingsBuilder}"
-            ]
-        }
-    },
-
-    specialFlyout: {
-        parent: 'flyout'
-    },
-
-    map: {
-        type: LMI.Mapping.EDDKMap,
-        properties: {
-            controls: [ "{ref:zoomControl}", "{ref:panControl}" ]
-        }
-    },
-
-    zoomControl: {
-    },
-
-    panControl: {
-    }
-} );
-
-
-
-// Page script, reformulated as a class so it can have values injected.
-// Ideally this configuration should be in a separate file than the
-// page script itself, so it can be easily reconfigured while leaving the
-// logic in the parent project.
-// Note: Something will still have to invoke instantiation of this object by
-// calling Wiring.get('mapSearch') ... or should we add a configuration
-// option like 'createOnLoad:true' to automatically trigger instantiatiion
-// when the dom is loaded?
-Wiring.add( {
-    mapSearch: {
-        type: LMI.MapSearch,
-        properties: {
-            map: "{ref:map}",
-            poiFactory: "{ref:poiFactory}",
-            listings: LMI.Data.listings
-        },
-        initMethod: "init"
-    }
-} );
-
-
-// Sample of a ValueResolver for localized message strings:
-function MessageResolver() {};
-YAHOO.lang.extend( MessageResolver, Wiring.ValueResolver, {
-    prefix: "msg",
-    resolve: LMI.Strings.getString
-} );
-Wiring.addValueResolver( new MessageResolver );
-
-
-*/
 
