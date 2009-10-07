@@ -284,19 +284,6 @@ var Wiring = (function() {
 
 
     /**
-     * @class Mergeable
-     * @private
-     * Wrapper class for an object or array which serves as a marker that the value
-     * should be merged with the corresponding object or array in the parent definition,
-     * rather than replacing it.
-     * @param {Object|Array} obj
-     */
-    function Mergeable( obj ) {
-        this.value = obj;
-    }
-
-
-    /**
      * @class Def (Internal) A single object wiring definition
      * @param {Wiring} wiring - the wiring object to which this definition belongs; used to
      *         look up other referenced definitions.
@@ -363,17 +350,6 @@ var Wiring = (function() {
             return ( p && this.wiring._defs[ p ] ) || null;
         },
 
-        mergeProps: function( o1, o2 ) {
-            var p, v1, v2;
-            for( p in o2 ) {
-                if( o2.hasOwnProperty( p ) ) {
-                    if( o2[ p ] instanceof Mergeable ) {
-                        
-                    }
-                }
-            }
-        },
-
         /**
          * Calculate and return a full definition template object, inheriting from
          * any configured parent definitions.  The resulting value will be cached
@@ -389,8 +365,8 @@ var Wiring = (function() {
                 if( par ) {
                     par = par.getCascadedDef();
                     casc = merge( {}, par, def );
-                    casc.ctorArgs = this.mergeProps( merge( [], par.ctorArgs ), def.ctorArgs );
-                    casc.properties = this.mergeProps( merge( {}, par.properties ), def.properties );
+                    casc.ctorArgs = merge( [], par.ctorArgs, def.ctorArgs );
+                    casc.properties = merge( {}, par.properties, def.properties );
                     def = casc;
                 }
                 obj = this[ cache ] = merge( {}, Def.defaults, def );
@@ -584,15 +560,6 @@ var Wiring = (function() {
             this._resolvers[ resolver.prefix ] = resolver;
         },
 
-        /**
-         * Specify that an object or array literal value should be merged with the
-         * corresponding value in the parent definition, rather than replacing it.
-         * @param obj
-         */
-        merge: function( obj ) {
-            return new Mergeable( obj );
-        },
-
         WiringAware: WiringAware,
         Factory : Factory,
         ValueResolver: ValueResolver
@@ -606,4 +573,3 @@ var Wiring = (function() {
      */
     return new W();
 })();
-
