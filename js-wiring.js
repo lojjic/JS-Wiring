@@ -13,7 +13,7 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  * * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
@@ -248,6 +248,8 @@
  *
  */
 var Wiring = (function() {
+    var OBJECT = Object,
+        NULL = null;
 
     /**
      * Utility for merging object properties.
@@ -274,9 +276,10 @@ var Wiring = (function() {
      * Simple class extension utility
      */
     function extend( subc, superc, overrides ) {
-        var F = function() {}, subproto;
-        F.prototype = superc.prototype;
-        subc.prototype = merge( new F(), overrides, { constructor: subc } );
+        var F = function() {},
+            PROTO = 'prototype';
+        F[ PROTO ] = superc[ PROTO ];
+        subc[ PROTO ] = merge( new F(), overrides, { constructor: subc } );
     }
 
 
@@ -287,8 +290,8 @@ var Wiring = (function() {
      * a subclass) it will automatically inject itself as the 'wiring' property.
      */
     function WiringAware() {}
-    extend( WiringAware, Object, {
-        wiring: null
+    extend( WiringAware, OBJECT, {
+        wiring: NULL
     } );
 
 
@@ -303,15 +306,15 @@ var Wiring = (function() {
         this.def = obj;
     }
     Def.defaults = {
-        type: Object,
+        type: OBJECT,
         singleton: true,
         ctorArgs: [],
         properties: {},
-        initMethod: null,
-        parent: null
+        initMethod: NULL,
+        parent: NULL
     };
     Def.PLACEHOLDER_RE = /^\{(\w+):(.+)\}$/;
-    Def.prototype = {
+    extend( Def, OBJECT, {
         /**
          * Expand a property or ctorArgs definition value into a real value that can be
          * injected into an object instance. Makes deep copies of arrays/objects, and
@@ -321,14 +324,14 @@ var Wiring = (function() {
             var i, v, p, phMatch, resolver, result;
 
             // Deep copy of array members
-            if( Object.prototype.toString.call( val ) === '[object Array]' ) {
+            if( OBJECT.prototype.toString.call( val ) === '[object Array]' ) {
                 result = [];
                 for( i = 0; ( v = val[ i ] ); i++ ) {
                     result.push( this.expand( v ) );
                 }
             }
             // Deep copy of complex object properties
-            else if( typeof val === "object" && val !== null ) {
+            else if( typeof val === "object" && val !== NULL ) {
                 result = {};
                 for( p in val ) {
                     if( val.hasOwnProperty( p ) ) {
@@ -356,7 +359,7 @@ var Wiring = (function() {
          */
         getParent: function() {
             var p = this.def.parent;
-            return ( p && this.wiring._defs[ p ] ) || null;
+            return ( p && this.wiring._defs[ p ] ) || NULL;
         },
 
         /**
@@ -366,7 +369,7 @@ var Wiring = (function() {
          * @return Object
          */
         getCascadedDef: function() {
-            var cache = '_cascadedDef', def, par, casc,
+            var cache = '_cascDef', def, par, casc,
                 obj = this[ cache ];
             if( !obj ) {
                 def = this.def;
@@ -393,7 +396,8 @@ var Wiring = (function() {
         getInstance: function() {
             var p, m, v, inst, i, len, args, argRefs,
                 def = this.getCascadedDef(),
-                defProps = def.properties;
+                defProps = def.properties,
+                func = 'function';
 
             inst = this._instance;
             if( inst && def.singleton ) {
@@ -436,7 +440,7 @@ var Wiring = (function() {
                 if( defProps.hasOwnProperty( p ) ) {
                     m = inst[ "set" + p.charAt(0).toUpperCase() + p.substring(1) ];
                     v = this.expand( defProps[ p ] );
-                    if( m && typeof m === "function" ) {
+                    if( m && typeof m === func ) {
                         m.call( inst, v );
                     } else {
                         inst[ p ] = v;
@@ -445,13 +449,13 @@ var Wiring = (function() {
             }
 
             // Call initMethod if specified
-            if( ( m = def.initMethod ) && ( m = inst[ m ] ) && typeof m === "function" ) {
+            if( ( m = def.initMethod ) && ( m = inst[ m ] ) && typeof m === func ) {
                 m.call( inst );
             }
 
             return inst;
         }
-    };
+    } );
 
 
     /**
@@ -461,7 +465,7 @@ var Wiring = (function() {
      */
     function Factory() {}
     extend( Factory, WiringAware, {
-        refId: null,
+        refId: NULL,
 
         /**
          * Create and return an instance of the factory's target, optionally specifying
@@ -537,7 +541,7 @@ var Wiring = (function() {
         this._resolvers = {};
         this.addValueResolver( new RefResolver() );
     }
-    extend( W, Object, {
+    extend( W, OBJECT, {
         /**
          * Add a new object definition to this wiring container
          * @param def
@@ -557,7 +561,7 @@ var Wiring = (function() {
          */
         get: function( name ) {
             var def = this._defs[ name ];
-            return ( def ? def.getInstance() : null );
+            return ( def ? def.getInstance() : NULL );
         },
 
         /**
