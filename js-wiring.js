@@ -457,19 +457,33 @@ var Wiring = (function() {
         /**
          * Create and return an instance of the factory's target, optionally specifying
          * configuration properties to be overridden for this particular instance.
-         * Note that if you supply overrides, the object definition will be treated as
-         * non-singleton (a new instance will be created for each call) regardless of
-         * whether the target definition is configured as a singleton or not.
+         * Note that the object definition will be treated as non-singleton (a new instance
+         * will be created for each call) regardless of whether the target definition is
+         * configured as a singleton or not.
          * @param {Object} overrides - Optional object definition containing aspects
          *        of the target definition to be overridden, such as ctorArgs or properties.
          */
         createInstance: function( overrides ) {
+            var wiring = this.wiring,
+                refId = this.refId,
+                Sub = this._subc, Sub2, def;
+            if( !Sub ) {
+                Sub = function() {}; //don't call superclass constructor
+                Sub.prototype = wiring.get( refId );
+                this._subc = Sub;
+            }
             if( overrides ) {
-                var obj = merge( {}, overrides, { parent: this.refId } ),
-                    def = new Def( this.wiring, obj );
+                Sub2 = function() {
+                    Sub.prototype.constructor.apply( this, arguments );
+                };
+                Sub2.prototype = Sub.prototype;
+                def = new Def( wiring, merge( {}, overrides, {
+                    type: Sub2,
+                    ctorArgs: merge( [], wiring._defs[ refId ].def.ctorArgs, overrides.ctorArgs )
+                } ) );
                 return def.getInstance();
             }
-            return this.wiring.get( this.refId );
+            return new Sub();
         }
     } );
 
