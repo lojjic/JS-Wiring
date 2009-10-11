@@ -270,6 +270,15 @@ var Wiring = (function() {
         return o1;
     }
 
+    /**
+     * Simple class extension utility
+     */
+    function extend( subc, superc, overrides ) {
+        var F = function() {}, subproto;
+        F.prototype = superc.prototype;
+        subc.prototype = merge( new F(), overrides, { constructor: subc } );
+    }
+
 
     /**
      * @class Wiring.WiringAware
@@ -278,9 +287,9 @@ var Wiring = (function() {
      * a subclass) it will automatically inject itself as the 'wiring' property.
      */
     function WiringAware() {}
-    WiringAware.prototype = {
+    extend( WiringAware, Object, {
         wiring: null
-    };
+    } );
 
 
     /**
@@ -451,7 +460,7 @@ var Wiring = (function() {
      * a given object definition template.
      */
     function Factory() {}
-    Factory.prototype = merge( new WiringAware(), {
+    extend( Factory, WiringAware, {
         refId: null,
 
         /**
@@ -487,7 +496,7 @@ var Wiring = (function() {
      * for resolving config entries or a "{msg:*}" resolver for resolving localized strings.
      */
     function ValueResolver() {}
-    ValueResolver.prototype = merge( new WiringAware(), {
+    extend( ValueResolver, WiringAware, {
         /**
          * The prefix that will be used to trigger this ValueResolver
          */
@@ -512,7 +521,7 @@ var Wiring = (function() {
      * @private
      */
     function RefResolver() {}
-    RefResolver.prototype = merge( new ValueResolver(), {
+    extend( RefResolver, ValueResolver, {
         prefix: "ref",
         resolve: function( key ) {
             return this.wiring.get( key );
@@ -528,7 +537,7 @@ var Wiring = (function() {
         this._resolvers = {};
         this.addValueResolver( new RefResolver() );
     }
-    merge( W.prototype, {
+    extend( W, Object, {
         /**
          * Add a new object definition to this wiring container
          * @param def
