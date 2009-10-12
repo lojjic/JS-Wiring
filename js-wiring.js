@@ -394,7 +394,7 @@ var Wiring = (function() {
          * @return Object
          */
         getInstance: function() {
-            var p, m, v, inst, i, len, args, argRefs, tempCtor,
+            var p, m, v, inst, tempCtor,
                 def = this.getCascadedDef(),
                 defProps = def.properties,
                 defCtor = def.type,
@@ -406,11 +406,7 @@ var Wiring = (function() {
                 return inst;
             }
 
-            args = [];
-            argRefs = [];
-
-            len = defCtorArgs.length;
-            if( len > 0 ) {
+            if( defCtorArgs.length > 0 ) {
                 // Construct a new instance, passing along any ctorArgs. Instantiate the
                 // object using an empty constructor, then call apply on the real constructor;
                 // this allows us to use a ctor argument list of unknown length and still
