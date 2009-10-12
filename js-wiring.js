@@ -394,9 +394,11 @@ var Wiring = (function() {
          * @return Object
          */
         getInstance: function() {
-            var p, m, v, inst, i, len, args, argRefs,
+            var p, m, v, inst, i, len, args, argRefs, tempCtor,
                 def = this.getCascadedDef(),
                 defProps = def.properties,
+                defCtor = def.type,
+                defCtorArgs = def.ctorArgs,
                 func = 'function';
 
             inst = this._instance;
@@ -407,22 +409,19 @@ var Wiring = (function() {
             args = [];
             argRefs = [];
 
-            len = def.ctorArgs.length;
+            len = defCtorArgs.length;
             if( len > 0 ) {
-                // Construct a new instance, passing along any ctorArgs.
-                // Would be nice to find a less ugly way to do this, but I haven't found an
-                // approach that doesn't result in an invalid prototype chain.
-                for( i = 0; i < len; i++ ) {
-                    args.push( this.expand( def.ctorArgs[ i ] ) );
-                    argRefs.push( "a[" + i + "]" );
-                }
-                /*jslint evil: true */
-                inst = ( new Function( 'T', 'a', "return new T(" + argRefs.join(',') + ")" ) )( def.type, args );
-                // TODO implement protection against recursive ctorArgs '{ref:*}' values, which will cause an infinite loop
-                /*jslint evil: false */
+                // Construct a new instance, passing along any ctorArgs. Instantiate the
+                // object using an empty constructor, then call apply on the real constructor;
+                // this allows us to use a ctor argument list of unknown length and still
+                // maintain the correct prototype chain.
+                tempCtor = function() {};
+                tempCtor.prototype = defCtor.prototype;
+                inst = new tempCtor();
+                defCtor.apply( inst, this.expand( defCtorArgs ) );
             } else {
                 // Fast path for no-argument constructor
-                inst = new def.type();
+                inst = new defCtor();
             }
 
             if( def.singleton ) {
