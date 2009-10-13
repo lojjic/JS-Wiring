@@ -299,11 +299,11 @@ var Wiring = (function() {
      * @class Def (Internal) A single object wiring definition
      * @param {Wiring} wiring - the wiring object to which this definition belongs; used to
      *         look up other referenced definitions.
-     * @param {Object} obj - the object definition.
+     * @param {Object} obj - the object configuration.
      */
-    function Def( wiring, obj ) {
+    function Def( wiring, cfg ) {
         this.wiring = wiring;
-        this.def = obj;
+        this.cfg = cfg;
     }
     Def.defaults = {
         type: OBJECT,
@@ -358,30 +358,30 @@ var Wiring = (function() {
          * this def's 'parent' property, or null if no parent is configured.
          */
         getParent: function() {
-            var p = this.def.parent;
+            var p = this.cfg.parent;
             return ( p && this.wiring._defs[ p ] ) || NULL;
         },
 
         /**
-         * Calculate and return a full definition template object, inheriting from
+         * Calculate and return a full configuration object, inheriting from
          * any configured parent definitions.  The resulting value will be cached
          * for performance on subsequent calls.
          * @return Object
          */
-        getCascadedDef: function() {
-            var cache = '_cascDef', def, par, casc,
+        getCascadedCfg: function() {
+            var cache = '_cascCfg', cfg, par, casc,
                 obj = this[ cache ];
             if( !obj ) {
-                def = this.def;
+                cfg = this.cfg;
                 par = this.getParent();
                 if( par ) {
-                    par = par.getCascadedDef();
-                    casc = merge( {}, par, def );
-                    casc.ctorArgs = merge( [], par.ctorArgs, def.ctorArgs );
-                    casc.properties = merge( {}, par.properties, def.properties );
-                    def = casc;
+                    par = par.getCascadedCfg();
+                    casc = merge( {}, par, cfg );
+                    casc.ctorArgs = merge( [], par.ctorArgs, cfg.ctorArgs );
+                    casc.properties = merge( {}, par.properties, cfg.properties );
+                    cfg = casc;
                 }
-                obj = this[ cache ] = merge( {}, Def.defaults, def );
+                obj = this[ cache ] = merge( {}, Def.defaults, cfg );
             }
             return obj;
         },
@@ -395,32 +395,32 @@ var Wiring = (function() {
          */
         getInstance: function() {
             var p, m, v, inst, tempCtor,
-                def = this.getCascadedDef(),
-                defProps = def.properties,
-                defCtor = def.type,
-                defCtorArgs = def.ctorArgs,
+                cfg = this.getCascadedCfg(),
+                cfgProps = cfg.properties,
+                cfgCtor = cfg.type,
+                cfgCtorArgs = cfg.ctorArgs,
                 func = 'function';
 
             inst = this._instance;
-            if( inst && def.singleton ) {
+            if( inst && cfg.singleton ) {
                 return inst;
             }
 
-            if( defCtorArgs.length > 0 ) {
+            if( cfgCtorArgs.length > 0 ) {
                 // Construct a new instance, passing along any ctorArgs. Instantiate the
                 // object using an empty constructor, then call apply on the real constructor;
                 // this allows us to use a ctor argument list of unknown length and still
                 // maintain the correct prototype chain.
                 tempCtor = function() {};
-                tempCtor.prototype = defCtor.prototype;
+                tempCtor.prototype = cfgCtor.prototype;
                 inst = new tempCtor();
-                defCtor.apply( inst, this.expand( defCtorArgs ) );
+                cfgCtor.apply( inst, this.expand( cfgCtorArgs ) );
             } else {
                 // Fast path for no-argument constructor
-                inst = new defCtor();
+                inst = new cfgCtor();
             }
 
-            if( def.singleton ) {
+            if( cfg.singleton ) {
                 this._instance = inst;
             }
 
@@ -431,10 +431,10 @@ var Wiring = (function() {
 
             // Set properties - if there is a setter method it will be used, otherwise
             // the raw property is set directly.
-            for( p in defProps ) {
-                if( defProps.hasOwnProperty( p ) ) {
+            for( p in cfgProps ) {
+                if( cfgProps.hasOwnProperty( p ) ) {
                     m = inst[ "set" + p.charAt(0).toUpperCase() + p.substring(1) ];
-                    v = this.expand( defProps[ p ] );
+                    v = this.expand( cfgProps[ p ] );
                     if( m && typeof m === func ) {
                         m.call( inst, v );
                     } else {
@@ -444,7 +444,7 @@ var Wiring = (function() {
             }
 
             // Call initMethod if specified
-            if( ( m = def.initMethod ) && ( m = inst[ m ] ) && typeof m === func ) {
+            if( ( m = cfg.initMethod ) && ( m = inst[ m ] ) && typeof m === func ) {
                 m.call( inst );
             }
 
