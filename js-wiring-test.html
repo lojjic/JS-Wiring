@@ -403,6 +403,104 @@
             return obj1 !== obj2 && obj1.constructor === obj2.constructor && obj1.one === obj2.one && obj1.two === obj2.two;
         } );
 
+        runTest( 'Merging object properties to parent', function() {
+            Wiring.add( {
+                testObjectPropMergeParent: {
+                    properties: {
+                        prop: {parentProp: 'fromParent'}
+                    }
+                },
+                testObjectPropMerge: {
+                    parent: 'testObjectPropMergeParent',
+                    properties: {
+                        prop: Wiring.mergeUp( { childProp: 'fromChild' } )
+                    }
+                },
+                testObjectPropNonMerge: {
+                    parent: 'testObjectPropMergeParent',
+                    properties: {
+                        prop: { childProp: 'fromChild' }
+                    }
+                }
+            } );
+
+            var mergedObj = Wiring.get( 'testObjectPropMerge' ),
+                nonMergedObj = Wiring.get( 'testObjectPropNonMerge' );
+            return mergedObj.prop.parentProp === 'fromParent' && mergedObj.prop.childProp === 'fromChild' &&
+                   nonMergedObj.prop.parentProp === undefined && nonMergedObj.prop.childProp === 'fromChild';
+        } );
+
+        runTest( 'Merging array properties to parent', function() {
+            Wiring.add( {
+                testArrayPropMergeParent: {
+                    properties: {
+                        prop: ['parent1', 'parent2']
+                    }
+                },
+                testArrayPropMerge: {
+                    parent: 'testArrayPropMergeParent',
+                    properties: {
+                        prop: Wiring.mergeUp( ['child1','child2'] )
+                    }
+                },
+                testArrayPropNonMerge: {
+                    parent: 'testArrayPropMergeParent',
+                    properties: {
+                        prop: ['child1','child2']
+                    }
+                }
+            } );
+
+            var mergedObj = Wiring.get( 'testArrayPropMerge' ),
+                nonMergedObj = Wiring.get( 'testArrayPropNonMerge' );
+            return mergedObj.prop.length === 4 && mergedObj.prop[1] === 'parent2' && mergedObj.prop[3] === 'child2' &&
+                   nonMergedObj.prop.length === 2 && nonMergedObj.prop[1] === 'child2';
+        } );
+
+        runTest( 'Merging object ctor args to parent', function() {
+            Wiring.add( {
+                testObjectCtorMergeParent: {
+                    type: Baz,
+                    ctorArgs: [ {parentProp: 'fromParent'} ]
+                },
+                testObjectCtorMerge: {
+                    parent: 'testObjectCtorMergeParent',
+                    ctorArgs: [ Wiring.mergeUp( { childProp: 'fromChild' } ) ]
+                },
+                testObjectCtorNonMerge: {
+                    parent: 'testObjectCtorMergeParent',
+                    ctorArgs: [ { childProp: 'fromChild' } ]
+                }
+            } );
+
+            var mergedObj = Wiring.get( 'testObjectCtorMerge' ),
+                nonMergedObj = Wiring.get( 'testObjectCtorNonMerge' );
+            return mergedObj.oneByCtor.parentProp === 'fromParent' && mergedObj.oneByCtor.childProp === 'fromChild' &&
+                   nonMergedObj.oneByCtor.parentProp === undefined && nonMergedObj.oneByCtor.childProp === 'fromChild';
+        } );
+
+        runTest( 'Merging array ctor args to parent', function() {
+            Wiring.add( {
+                testArrayMergeParent: {
+                    type: Baz,
+                    ctorArgs: [ ['parent1', 'parent2'] ]
+                },
+                testArrayMerge: {
+                    parent: 'testArrayMergeParent',
+                    ctorArgs: [ Wiring.mergeUp( ['child1','child2'] ) ]
+                },
+                testArrayNonMerge: {
+                    parent: 'testArrayMergeParent',
+                    ctorArgs: [ ['child1','child2'] ]
+                }
+            } );
+
+            var mergedObj = Wiring.get( 'testArrayMerge' ),
+                nonMergedObj = Wiring.get( 'testArrayNonMerge' );
+            return mergedObj.oneByCtor.length === 4 && mergedObj.oneByCtor[1] === 'parent2' && mergedObj.oneByCtor[3] === 'child2' &&
+                   nonMergedObj.oneByCtor.length === 2 && nonMergedObj.oneByCtor[1] === 'child2';
+        } );
+
         document.write( '<p class="timer">all tests completed in ' + ( new Date().getTime() - start ) + 'ms</p>' );
 
     </script>

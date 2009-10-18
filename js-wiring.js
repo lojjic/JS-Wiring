@@ -168,6 +168,43 @@
  *         </tr>
  *     </tbody>
  * </table>
+ *
+ * <h2>Merging</h2>
+ *
+ * <p>Sometimes when you have a child definition inheriting from a parent definition, you want that
+ * child definition's properties or constructor arguments to be merged with the corresponding
+ * properties or constructor arguments in the parent definition, rather than overriding them.
+ * This is particularly useful for array items, where you want to have a base set of members
+ * defined in the parent, and let the child definition add to that list.</p>
+ *
+ * <p>To support this, you can use the <code>mergeUp</code> function to mark an object or array
+ * property or constructor argument so that it will be merged with its parent.  If used on an
+ * Object, its properties will be merged with the corresponding Object in its parent.  If used
+ * on an Array, the items of the child Array will be appended to the items of the corresponding
+ * Array in its parent.  For example:</p>
+ *
+ * <pre><code>Wiring.add( {
+ *     parentObject: {
+ *         properties: {
+ *             objectProp: { parentProp: 'foo' },
+ *             arrayProp: [ 'parentMember' ]
+ *         }
+ *     },
+ *     childObject: {
+ *         properties: {
+ *             objectProp: Wiring.mergeUp( { childProp: 'bar' } ),
+ *             arrayProp: Wiring.mergeUp( [ 'childMember' ] )
+ *         }
+ *     }
+ * } );</code></pre>
+ *
+ * <p>With the definitions above, when <code>childObject</code> is created it will result in
+ * the following structure:</p>
+ *
+ * <pre><code>{
+ *     "objectProp": { "parentProp": "foo", "childProp": "bar" },
+ *     "arrayProp": [ "parentMember", "childMember" ]
+ * }</code></pre>
  * 
  * <h2>Factories</h2>
  *
@@ -252,6 +289,24 @@ var Wiring = (function() {
         NULL = null;
 
     /**
+     * Array detection utility
+     * @param {Object} val
+     */
+    function isArray( val ) {
+        return OBJECT.prototype.toString.call( val ) === '[object Array]';
+    }
+
+
+    /**
+     * Wrapper class for an object or array to mark it as mergeable; used by the
+     * 'merge' function below to merge object or array properties into their
+     * parent properties rather than overriding them.
+     */
+    function Mergeable( obj ) {
+        this.object = obj;
+    }
+
+    /**
      * Utility for merging object properties.
      * Note this works for arrays too, by supplying an object with numeric
      * property names, e.g. merge( [1,2], {'1':'foo'} ) --> [1,'foo']; this
@@ -259,12 +314,24 @@ var Wiring = (function() {
      * @return the first argument with any other arguments' properties merged in.
      */
     function merge( o1 /*, o2, o3, ...*/ ) {
-        for( var i = 1, len = arguments.length, oN, p; i < len; i++ ) {
+        var i = 1, len = arguments.length,
+            oN, p, o1Val, oNVal;
+        for( ; i < len; i++ ) {
             oN = arguments[ i ];
             if( oN ) {
                 for( p in oN ) {
                     if( oN.hasOwnProperty( p ) ) {
-                        o1[ p ] = oN[ p ];
+                        oNVal = oN[ p ];
+                        // If object is a Mergeable wrapper, unwrap and merge the properties
+                        if( oNVal instanceof Mergeable ) {
+                            oNVal = oNVal.object;
+                            if( p in o1 && ( o1Val = o1[ p ] ) ) {
+                                oNVal = ( isArray( o1Val ) && isArray( oNVal ) ) ?
+                                        o1Val.concat( oNVal ) :
+                                        merge( {}, o1Val, oNVal );
+                            }
+                        }
+                        o1[ p ] = oNVal;
                     }
                 }
             }
@@ -324,7 +391,7 @@ var Wiring = (function() {
             var i, v, p, phMatch, resolver, result;
 
             // Deep copy of array members
-            if( OBJECT.prototype.toString.call( val ) === '[object Array]' ) {
+            if( isArray( val ) ) {
                 result = [];
                 for( i = 0; ( v = val[ i ] ); i++ ) {
                     result.push( this.expand( v ) );
@@ -566,6 +633,15 @@ var Wiring = (function() {
         addValueResolver: function( resolver ) {
             resolver.wiring = this; //ValueResolver is WiringAware
             this._resolvers[ resolver.prefix ] = resolver;
+        },
+
+        /**
+         * Mark an object or array so that it will be merged with its corresponding value
+         * in its parent definition rather than overwriting it.
+         * @param {Object|Array} obj The object to be marked
+         */
+        mergeUp: function( obj ) {
+            return new Mergeable( obj );
         },
 
         WiringAware: WiringAware,
