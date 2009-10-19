@@ -2,6 +2,7 @@
 <head>
     <title>JS Wiring Tests</title>
     <script type="text/javascript" src="js-wiring.js"></script>
+    <script type="text/javascript" src="js-wiring-debug.js"></script>
     <style type="text/css">
         html, body {font-family: sans-serif;}
         h1 {font-size: 1.2em;}
@@ -67,7 +68,7 @@
         function TestWiringAwareSub() {};
         TestWiringAwareSub.prototype = new Wiring.WiringAware();
         TestWiringAwareSub.prototype.getFoo1 = function() {
-            return this.wiring.get( 'foo1' );
+            return this.wiring.get( 'testWiringAwareTarget' );
         };
 
         function TestValueResolver() {};
@@ -363,10 +364,11 @@
             Wiring.add( {
                 testWiringAware: {
                     type: TestWiringAwareSub
-                }
+                },
+                testWiringAwareTarget: {}
             } );
             var obj = Wiring.get( 'testWiringAware' );
-            return obj.wiring === Wiring && obj.getFoo1() === Wiring.get( 'foo1' );
+            return obj.wiring === Wiring && obj.getFoo1() === Wiring.get( 'testWiringAwareTarget' );
         } );
 
         runTest( 'Custom ValueResolver', function() {
