@@ -13,7 +13,7 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  * * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
@@ -168,6 +168,43 @@
  *         </tr>
  *     </tbody>
  * </table>
+ *
+ * <h2>Merging</h2>
+ *
+ * <p>Sometimes when you have a child definition inheriting from a parent definition, you want that
+ * child definition's properties or constructor arguments to be merged with the corresponding
+ * properties or constructor arguments in the parent definition, rather than overriding them.
+ * This is particularly useful for array items, where you want to have a base set of members
+ * defined in the parent, and let the child definition add to that list.</p>
+ *
+ * <p>To support this, you can use the <code>mergeUp</code> function to mark an object or array
+ * property or constructor argument so that it will be merged with its parent.  If used on an
+ * Object, its properties will be merged with the corresponding Object in its parent.  If used
+ * on an Array, the items of the child Array will be appended to the items of the corresponding
+ * Array in its parent.  For example:</p>
+ *
+ * <pre><code>Wiring.add( {
+ *     parentObject: {
+ *         properties: {
+ *             objectProp: { parentProp: 'foo' },
+ *             arrayProp: [ 'parentMember' ]
+ *         }
+ *     },
+ *     childObject: {
+ *         properties: {
+ *             objectProp: Wiring.mergeUp( { childProp: 'bar' } ),
+ *             arrayProp: Wiring.mergeUp( [ 'childMember' ] )
+ *         }
+ *     }
+ * } );</code></pre>
+ *
+ * <p>With the definitions above, when <code>childObject</code> is created it will result in
+ * the following structure:</p>
+ *
+ * <pre><code>{
+ *     "objectProp": { "parentProp": "foo", "childProp": "bar" },
+ *     "arrayProp": [ "parentMember", "childMember" ]
+ * }</code></pre>
  * 
  * <h2>Factories</h2>
  *
@@ -248,6 +285,26 @@
  *
  */
 var Wiring = (function() {
+    var OBJECT = Object,
+        NULL = null;
+
+    /**
+     * Array detection utility
+     * @param {Object} val
+     */
+    function isArray( val ) {
+        return OBJECT.prototype.toString.call( val ) === '[object Array]';
+    }
+
+
+    /**
+     * Wrapper class for an object or array to mark it as mergeable; used by the
+     * 'merge' function below to merge object or array properties into their
+     * parent properties rather than overriding them.
+     */
+    function Mergeable( obj ) {
+        this.object = obj;
+    }
 
     /**
      * Utility for merging object properties.
@@ -257,17 +314,39 @@ var Wiring = (function() {
      * @return the first argument with any other arguments' properties merged in.
      */
     function merge( o1 /*, o2, o3, ...*/ ) {
-        for( var i = 1, len = arguments.length, oN, p; i < len; i++ ) {
+        var i = 1, len = arguments.length,
+            oN, p, o1Val, oNVal;
+        for( ; i < len; i++ ) {
             oN = arguments[ i ];
             if( oN ) {
                 for( p in oN ) {
                     if( oN.hasOwnProperty( p ) ) {
-                        o1[ p ] = oN[ p ];
+                        oNVal = oN[ p ];
+                        // If object is a Mergeable wrapper, unwrap and merge the properties
+                        if( oNVal instanceof Mergeable ) {
+                            oNVal = oNVal.object;
+                            if( p in o1 && ( o1Val = o1[ p ] ) ) {
+                                oNVal = ( isArray( o1Val ) && isArray( oNVal ) ) ?
+                                        o1Val.concat( oNVal ) :
+                                        merge( {}, o1Val, oNVal );
+                            }
+                        }
+                        o1[ p ] = oNVal;
                     }
                 }
             }
         }
         return o1;
+    }
+
+    /**
+     * Simple class extension utility
+     */
+    function extend( subc, superc, overrides ) {
+        var F = function() {},
+            PROTO = 'prototype';
+        F[ PROTO ] = superc[ PROTO ];
+        subc[ PROTO ] = merge( new F(), overrides, { constructor: subc } );
     }
 
 
@@ -278,31 +357,31 @@ var Wiring = (function() {
      * a subclass) it will automatically inject itself as the 'wiring' property.
      */
     function WiringAware() {}
-    WiringAware.prototype = {
-        wiring: null
-    };
+    extend( WiringAware, OBJECT, {
+        wiring: NULL
+    } );
 
 
     /**
      * @class Def (Internal) A single object wiring definition
      * @param {Wiring} wiring - the wiring object to which this definition belongs; used to
      *         look up other referenced definitions.
-     * @param {Object} obj - the object definition.
+     * @param {Object} obj - the object configuration.
      */
-    function Def( wiring, obj ) {
+    function Def( wiring, cfg ) {
         this.wiring = wiring;
-        this.def = obj;
+        this.cfg = cfg;
     }
     Def.defaults = {
-        type: Object,
+        type: OBJECT,
         singleton: true,
         ctorArgs: [],
         properties: {},
-        initMethod: null,
-        parent: null
+        initMethod: NULL,
+        parent: NULL
     };
     Def.PLACEHOLDER_RE = /^\{(\w+):(.+)\}$/;
-    Def.prototype = {
+    extend( Def, OBJECT, {
         /**
          * Expand a property or ctorArgs definition value into a real value that can be
          * injected into an object instance. Makes deep copies of arrays/objects, and
@@ -312,14 +391,14 @@ var Wiring = (function() {
             var i, v, p, phMatch, resolver, result;
 
             // Deep copy of array members
-            if( Object.prototype.toString.call( val ) === '[object Array]' ) {
+            if( isArray( val ) ) {
                 result = [];
                 for( i = 0; ( v = val[ i ] ); i++ ) {
                     result.push( this.expand( v ) );
                 }
             }
             // Deep copy of complex object properties
-            else if( typeof val === "object" && val !== null ) {
+            else if( typeof val === "object" && val !== NULL ) {
                 result = {};
                 for( p in val ) {
                     if( val.hasOwnProperty( p ) ) {
@@ -346,30 +425,30 @@ var Wiring = (function() {
          * this def's 'parent' property, or null if no parent is configured.
          */
         getParent: function() {
-            var p = this.def.parent;
-            return ( p && this.wiring._defs[ p ] ) || null;
+            var p = this.cfg.parent;
+            return ( p && this.wiring._defs[ p ] ) || NULL;
         },
 
         /**
-         * Calculate and return a full definition template object, inheriting from
+         * Calculate and return a full configuration object, inheriting from
          * any configured parent definitions.  The resulting value will be cached
          * for performance on subsequent calls.
          * @return Object
          */
-        getCascadedDef: function() {
-            var cache = '_cascadedDef', def, par, casc,
+        getCascadedCfg: function() {
+            var cache = '_cascCfg', cfg, par, casc,
                 obj = this[ cache ];
             if( !obj ) {
-                def = this.def;
+                cfg = this.cfg;
                 par = this.getParent();
                 if( par ) {
-                    par = par.getCascadedDef();
-                    casc = merge( {}, par, def );
-                    casc.ctorArgs = merge( [], par.ctorArgs, def.ctorArgs );
-                    casc.properties = merge( {}, par.properties, def.properties );
-                    def = casc;
+                    par = par.getCascadedCfg();
+                    casc = merge( {}, par, cfg );
+                    casc.ctorArgs = merge( [], par.ctorArgs, cfg.ctorArgs );
+                    casc.properties = merge( {}, par.properties, cfg.properties );
+                    cfg = casc;
                 }
-                obj = this[ cache ] = merge( {}, Def.defaults, def );
+                obj = this[ cache ] = merge( {}, Def.defaults, cfg );
             }
             return obj;
         },
@@ -382,37 +461,33 @@ var Wiring = (function() {
          * @return Object
          */
         getInstance: function() {
-            var p, m, v, inst, i, len, args, argRefs,
-                def = this.getCascadedDef(),
-                defProps = def.properties;
+            var p, m, v, inst, tempCtor,
+                cfg = this.getCascadedCfg(),
+                cfgProps = cfg.properties,
+                cfgCtor = cfg.type,
+                cfgCtorArgs = cfg.ctorArgs,
+                func = 'function';
 
             inst = this._instance;
-            if( inst && def.singleton ) {
+            if( inst && cfg.singleton ) {
                 return inst;
             }
 
-            args = [];
-            argRefs = [];
-
-            len = def.ctorArgs.length;
-            if( len > 0 ) {
-                // Construct a new instance, passing along any ctorArgs.
-                // Would be nice to find a less ugly way to do this, but I haven't found an
-                // approach that doesn't result in an invalid prototype chain.
-                for( i = 0; i < len; i++ ) {
-                    args.push( this.expand( def.ctorArgs[ i ] ) );
-                    argRefs.push( "a[" + i + "]" );
-                }
-                /*jslint evil: true */
-                inst = ( new Function( 'T', 'a', "return new T(" + argRefs.join(',') + ")" ) )( def.type, args );
-                // TODO implement protection against recursive ctorArgs '{ref:*}' values, which will cause an infinite loop
-                /*jslint evil: false */
+            if( cfgCtorArgs.length > 0 ) {
+                // Construct a new instance, passing along any ctorArgs. Instantiate the
+                // object using an empty constructor, then call apply on the real constructor;
+                // this allows us to use a ctor argument list of unknown length and still
+                // maintain the correct prototype chain.
+                tempCtor = function() {};
+                tempCtor.prototype = cfgCtor.prototype;
+                inst = new tempCtor();
+                cfgCtor.apply( inst, this.expand( cfgCtorArgs ) );
             } else {
                 // Fast path for no-argument constructor
-                inst = new def.type();
+                inst = new cfgCtor();
             }
 
-            if( def.singleton ) {
+            if( cfg.singleton ) {
                 this._instance = inst;
             }
 
@@ -423,11 +498,11 @@ var Wiring = (function() {
 
             // Set properties - if there is a setter method it will be used, otherwise
             // the raw property is set directly.
-            for( p in defProps ) {
-                if( defProps.hasOwnProperty( p ) ) {
+            for( p in cfgProps ) {
+                if( cfgProps.hasOwnProperty( p ) ) {
                     m = inst[ "set" + p.charAt(0).toUpperCase() + p.substring(1) ];
-                    v = this.expand( defProps[ p ] );
-                    if( m && typeof m === "function" ) {
+                    v = this.expand( cfgProps[ p ] );
+                    if( m && typeof m === func ) {
                         m.call( inst, v );
                     } else {
                         inst[ p ] = v;
@@ -436,13 +511,13 @@ var Wiring = (function() {
             }
 
             // Call initMethod if specified
-            if( ( m = def.initMethod ) && ( m = inst[ m ] ) && typeof m === "function" ) {
+            if( ( m = cfg.initMethod ) && ( m = inst[ m ] ) && typeof m === func ) {
                 m.call( inst );
             }
 
             return inst;
         }
-    };
+    } );
 
 
     /**
@@ -451,8 +526,8 @@ var Wiring = (function() {
      * a given object definition template.
      */
     function Factory() {}
-    Factory.prototype = merge( new WiringAware(), {
-        refId: null,
+    extend( Factory, WiringAware, {
+        refId: NULL,
 
         /**
          * Create and return an instance of the factory's target, optionally specifying
@@ -501,7 +576,7 @@ var Wiring = (function() {
      * for resolving config entries or a "{msg:*}" resolver for resolving localized strings.
      */
     function ValueResolver() {}
-    ValueResolver.prototype = merge( new WiringAware(), {
+    extend( ValueResolver, WiringAware, {
         /**
          * The prefix that will be used to trigger this ValueResolver
          */
@@ -526,7 +601,7 @@ var Wiring = (function() {
      * @private
      */
     function RefResolver() {}
-    RefResolver.prototype = merge( new ValueResolver(), {
+    extend( RefResolver, ValueResolver, {
         prefix: "ref",
         resolve: function( key ) {
             return this.wiring.get( key );
@@ -542,7 +617,7 @@ var Wiring = (function() {
         this._resolvers = {};
         this.addValueResolver( new RefResolver() );
     }
-    merge( W.prototype, {
+    extend( W, OBJECT, {
         /**
          * Add a new object definition to this wiring container
          * @param def
@@ -562,7 +637,7 @@ var Wiring = (function() {
          */
         get: function( name ) {
             var def = this._defs[ name ];
-            return ( def ? def.getInstance() : null );
+            return ( def ? def.getInstance() : NULL );
         },
 
         /**
@@ -572,6 +647,15 @@ var Wiring = (function() {
         addValueResolver: function( resolver ) {
             resolver.wiring = this; //ValueResolver is WiringAware
             this._resolvers[ resolver.prefix ] = resolver;
+        },
+
+        /**
+         * Mark an object or array so that it will be merged with its corresponding value
+         * in its parent definition rather than overwriting it.
+         * @param {Object|Array} obj The object to be marked
+         */
+        mergeUp: function( obj ) {
+            return new Mergeable( obj );
         },
 
         WiringAware: WiringAware,
