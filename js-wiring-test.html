@@ -65,6 +65,12 @@
             this.twoByCtor = two;
         }
 
+        var TopLevel = {
+            Nested: {
+                ReallyNested: Foo
+            }
+        };
+
         function TestWiringAwareSub() {};
         TestWiringAwareSub.prototype = new Wiring.WiringAware();
         TestWiringAwareSub.prototype.getFoo1 = function() {
@@ -501,6 +507,17 @@
                 nonMergedObj = Wiring.get( 'testArrayNonMerge' );
             return mergedObj.oneByCtor.length === 4 && mergedObj.oneByCtor[1] === 'parent2' && mergedObj.oneByCtor[3] === 'child2' &&
                    nonMergedObj.oneByCtor.length === 2 && nonMergedObj.oneByCtor[1] === 'child2';
+        } );
+
+        runTest( 'Object "type" as string', function() {
+            Wiring.add( {
+                typeAsString: {
+                    type: "TopLevel.Nested.ReallyNested"
+                }
+            } );
+
+            var obj = Wiring.get( 'typeAsString' );
+            return obj instanceof Foo;
         } );
 
         document.write( '<p class="timer">all tests completed in ' + ( new Date().getTime() - start ) + 'ms</p>' );

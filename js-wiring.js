@@ -32,7 +32,7 @@
  * logic for creating/obtaining their dependencies.</p>
  *
  * <p>For an overview of dependency injection concepts, see
- * {@link http://en.wikipedia.org/wiki/Dependency_injection}</p>
+ * http://en.wikipedia.org/wiki/Dependency_injection</p>
  *
  * <p>This container is modeled loosely after Spring Framework's IoC container;
  * the biggest difference is that the configuration is done with a simple JavaScript
@@ -126,9 +126,11 @@
  *     <tbody>
  *         <tr>
  *             <td>type</td>
- *             <td>Function</td>
+ *             <td>Function or String</td>
  *             <td>The class which will be instantiated. If not specified for a definition or
- *                 any of its parents, will default to <code>Object</code>.</td>
+ *                 any of its parents, will default to <code>Object</code>. This can be set to
+ *                 a String whose value is the fully-qualified (dot-separated only) name of the
+ *                 class's constructor function, which will be evaluated upon object request.</td>
  *         </tr>
  *         <tr>
  *             <td>singleton</td>
@@ -351,6 +353,23 @@ var Wiring = (function() {
 
 
     /**
+     * Resolve a fully-qualified object name into that object. This is a very
+     * simple implementation and only handles dot-separated object paths, to
+     * avoid potential complications with eval'ing strings.
+     * @param {String} str
+     */
+    function strToObj( str ) {
+        var obj = this,
+            parts = str.split( '.' ),
+            i = 0, len = parts.length;
+        for( ; i < len; i++ ) {
+            obj = obj[ parts[ i ] ];
+        }
+        return obj;
+    }
+
+
+    /**
      * @class Wiring.WiringAware
      * Base class for objects that are aware of their Wiring environment.
      * When the Wiring environment constructs an instance of this class (or
@@ -366,7 +385,7 @@ var Wiring = (function() {
      * @class Def (Internal) A single object wiring definition
      * @param {Wiring} wiring - the wiring object to which this definition belongs; used to
      *         look up other referenced definitions.
-     * @param {Object} obj - the object configuration.
+     * @param {Object} cfg - the object configuration.
      */
     function Def( wiring, cfg ) {
         this.wiring = wiring;
@@ -471,6 +490,10 @@ var Wiring = (function() {
             inst = this._instance;
             if( inst && cfg.singleton ) {
                 return inst;
+            }
+
+            if( typeof cfgCtor === 'string' ) {
+                cfgCtor = strToObj( cfgCtor );
             }
 
             if( cfgCtorArgs.length > 0 ) {
