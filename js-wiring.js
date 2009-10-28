@@ -554,7 +554,7 @@ var Wiring = (function() {
                 Sub2.prototype = Sub.prototype;
                 def = new Def( wiring, merge( {}, overrides, {
                     type: Sub2,
-                    ctorArgs: merge( [], wiring._defs[ refId ].def.ctorArgs, overrides.ctorArgs )
+                    ctorArgs: merge( [], wiring._defs[ refId ].cfg.ctorArgs, overrides.ctorArgs )
                 } ) );
                 return def.getInstance();
             }
