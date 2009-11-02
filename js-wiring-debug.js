@@ -54,11 +54,16 @@
      * object it returns.
      */
     proto.get = function( name ) {
-        var obj = _get.call( this, name );
-        if( this.debug ) {
-            obj.__wiring_name__ = name;
+        try {
+            var obj = _get.call( this, name );
+            if( this.debug ) {
+                obj.__wiring_name__ = name;
+            }
+            return obj;
+        } catch( e ) {
+            e.__wiring_name__ = name;
+            throw e;
         }
-        return obj;
     };
 
     /**
