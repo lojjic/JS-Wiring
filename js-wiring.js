@@ -468,6 +468,11 @@ var Wiring = (function() {
                     cfg = casc;
                 }
                 obj = this[ cache ] = merge( {}, Def.defaults, cfg );
+
+                // If the 'type' is a string, attempt to resolve it to an object
+                if( typeof obj.type === 'string' ) {
+                    obj.type = strToObj( obj.type );
+                }
             }
             return obj;
         },
@@ -490,10 +495,6 @@ var Wiring = (function() {
             inst = this._instance;
             if( inst && cfg.singleton ) {
                 return inst;
-            }
-
-            if( typeof cfgCtor === 'string' ) {
-                cfgCtor = strToObj( cfgCtor );
             }
 
             if( cfgCtorArgs.length > 0 ) {
