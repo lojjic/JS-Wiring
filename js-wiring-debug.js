@@ -49,19 +49,67 @@
      */
     proto.debug = true;
 
+    /*
+     * Error strings
+     */
+    proto.ERR_NO_DEF = 'Wiring: No object named "{0}" is configured.';
+    proto.ERR_PARENT_NOT_STRING = 'Wiring: The configured parent for the object named "{0}" is not a string.';
+    proto.ERR_PARENT_NONEXISTENT = 'Wiring: The configured parent named "{1}" for the object named "{0}" does not exist in the configuration.';
+    proto.ERR_TYPE_NONEXISTENT = 'Wiring: The object named "{0}" is configured with a "type" that is undefined or not a function.';
+    proto.ERR_INITMETHOD_NOT_STRING = 'Wiring: The configured "initMethod" for the object named "{0}" is not a string.';
+    proto.ERR_INITMETHOD_NONEXISTENT = 'Wiring: The configured "initMethod" for the object named "{0}" does not exist in the prototype.';
+
     /**
      * Override get method so that it adds a __wiring_name__ property to each
      * object it returns.
      */
     proto.get = function( name ) {
+        var def, cfg, obj, parName, parObj;
+
+        // Make sure an object of that name is configured
+        def = this._defs[ name ];
+        if( !def ) {
+            throw new Error( this.ERR_NO_DEF.replace( "{0}", name ) );
+        }
+
+        // Perform some basic validation on the completed config
+        cfg = def.getCascadedCfg();
+        if( typeof cfg.type !== 'function' ) {
+            throw new Error( this.ERR_TYPE_NONEXISTENT.replace( "{0}", name ) );
+        }
+        if( cfg.initMethod ) {
+            if( typeof cfg.initMethod !== 'string' ) {
+                throw new Error( this.ERR_INITMETHOD_NOT_STRING.replace( "{0}", name ) );
+            }
+            if( typeof cfg.type.prototype[ cfg.initMethod ] !== 'function' ) {
+                throw new Error( this.ERR_INITMETHOD_NONEXISTENT.replace( "{0}", name ) );
+            }
+        }
+
+        // If a parent is declared, make sure it and all grandparents exist
+        par = def;
+        while( 'parent' in par.cfg ) {
+            par = par.cfg.parent;
+            if( typeof par !== 'string' ) {
+                throw new Error( this.ERR_PARENT_NOT_STRING.replace( "{0}", name ) );
+            }
+            if( !( this._defs[ par ] ) ) {
+                throw new Error( this.ERR_PARENT_NONEXISTENT.replace( "{0}", name ).replace( "{1}", par ) );
+            }
+            par = this._defs[ par ];
+        }
+
+        // Call through, adding debugging info
         try {
-            var obj = _get.call( this, name );
+            obj = _get.call( this, name );
             if( this.debug ) {
                 obj.__wiring_name__ = name;
+                obj.__wiring_config__ = cfg;
             }
             return obj;
         } catch( e ) {
             e.__wiring_name__ = name;
+            e.__wiring_config__ = cfg;
             throw e;
         }
     };

@@ -84,6 +84,8 @@
             return "dingle_" + key + "_berry";
         };
 
+        Wiring.debug = false;
+
         var start = new Date().getTime();
 
         runTest( 'Basic instantiation', function() {
@@ -518,6 +520,147 @@
 
             var obj = Wiring.get( 'typeAsString' );
             return obj instanceof Foo;
+        } );
+
+
+        /// Start testing of debug addon
+
+        runTest( 'Debug addon: addition of definition name and config to created objects', function() {
+            Wiring.debug = true;
+            Wiring.add( {
+                testDebugAddInfo: {}
+            } );
+
+            var obj = Wiring.get( 'testDebugAddInfo' );
+            return obj.__wiring_name__ === 'testDebugAddInfo' &&
+                   obj.__wiring_config__ === Wiring._defs.testDebugAddInfo.getCascadedCfg();
+        } );
+
+        runTest( 'Debug addon: validating object config exists', function() {
+            Wiring.debug = true;
+
+            try {
+                Wiring.get( 'doesnotexist' );
+            } catch(e) {
+                if( e.message === Wiring.ERR_NO_DEF.replace( '{0}', 'doesnotexist' ) ) {
+                    return true;
+                }
+            }
+            return false;
+        } );
+
+        runTest( 'Debug addon: validating type is defined function', function() {
+            Wiring.debug = true;
+            Wiring.add( {
+                testErrNoType: {
+                    type: undefined
+                }
+            } );
+
+            try {
+                Wiring.get( 'testErrNoType' );
+            } catch(e) {
+                if( e.message === Wiring.ERR_TYPE_NONEXISTENT.replace( '{0}', 'testErrNoType' ) ) {
+                    return true;
+                }
+            }
+            return false;
+        } );
+
+        runTest( 'Debug addon: validating parent is string', function() {
+            Wiring.debug = true;
+            Wiring.add( {
+                testErrParentNotString: {
+                    parent: {}
+                },
+                testErrGrandparentNotString: {
+                    parent: 'testErrParentNotString'
+                }
+            } );
+
+            var expected = false;
+            try {
+                Wiring.get( 'testErrParentNotString' )
+            } catch(e) {
+                expected = ( e.message === Wiring.ERR_PARENT_NOT_STRING.replace( '{0}', 'testErrParentNotString' ) );
+            }
+            if( !expected ) return false;
+
+            expected = false;
+            try {
+                Wiring.get( 'testErrGrandparentNotString' )
+            } catch(e) {
+                expected = ( e.message === Wiring.ERR_PARENT_NOT_STRING.replace( '{0}', 'testErrGrandparentNotString' ) );
+            }
+            if( !expected ) return false;
+
+            return true;
+        } );
+
+        runTest( 'Debug addon: validating parent exists', function() {
+            Wiring.debug = true;
+            Wiring.add( {
+                testErrParentNotExist: {
+                    parent: 'doesnotexist'
+                },
+                testErrGrandparentNotExist: {
+                    parent: 'testErrParentNotExist'
+                }
+            } );
+
+            var expected = false;
+            try {
+                Wiring.get( 'testErrParentNotExist' )
+            } catch(e) {
+                expected = ( e.message === Wiring.ERR_PARENT_NONEXISTENT.replace( '{0}', 'testErrParentNotExist' ).replace( '{1}', 'doesnotexist' ) );
+            }
+            if( !expected ) return false;
+
+            expected = false;
+            try {
+                Wiring.get( 'testErrParentNotExist' )
+            } catch(e) {
+                expected = ( e.message === Wiring.ERR_PARENT_NONEXISTENT.replace( '{0}', 'testErrParentNotExist' ).replace( '{1}', 'doesnotexist' ) );
+            }
+            if( !expected ) return false;
+
+            return true;
+        } );
+
+        runTest( 'Debug addon: validating initMethod is string', function() {
+            Wiring.debug = true;
+            Wiring.add( {
+                testErrInitMethodNotString: {
+                    initMethod: {}
+                }
+            } );
+
+            try {
+                Wiring.get( 'testErrInitMethodNotString' )
+            } catch(e) {
+                if( e.message === Wiring.ERR_INITMETHOD_NOT_STRING.replace( '{0}', 'testErrInitMethodNotString' ) ) {
+                    return true;
+                }
+            }
+            return false;
+        } );
+
+        runTest( 'Debug addon: validating initMethod exists', function() {
+            Wiring.debug = true;
+            Wiring.add( {
+                testErrInitMethodNotExist: {
+                    initMethod: 'doesnotexist'
+                }
+            } );
+
+            try {
+                Wiring.get( 'testErrInitMethodNotExist' )
+            } catch(e) {
+                if( e.message === Wiring.ERR_INITMETHOD_NONEXISTENT.replace( '{0}', 'testErrInitMethodNotExist' ) ) {
+                    return true;
+                }
+            }
+            return false;
         } );
 
         document.write( '<p class="timer">all tests completed in ' + ( new Date().getTime() - start ) + 'ms</p>' );
