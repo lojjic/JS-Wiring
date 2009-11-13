@@ -522,6 +522,10 @@
             return obj instanceof Foo;
         } );
 
+        runTest( 'Test isDefined', function() {
+            return Wiring.isDefined( 'thisisnotanobject' ) === false;
+        } );
+
 
         /// Start testing of debug addon
 

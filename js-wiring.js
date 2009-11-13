@@ -651,6 +651,14 @@ var Wiring = (function() {
         },
 
         /**
+         * Determine if a specific object name is configured
+         * @param {String} name - The name of the object configuration
+         */
+        isDefined: function( name ) {
+            return !!this._defs[ name ];
+        },
+
+        /**
          * Add a ValueResolver instance to be registered for handling placeholder string values
          * @param {Wiring.ValueResolver} resolver
          */
