@@ -348,7 +348,8 @@ var Wiring = (function() {
         var F = function() {},
             PROTO = 'prototype';
         F[ PROTO ] = superc[ PROTO ];
-        subc[ PROTO ] = merge( new F(), overrides, { constructor: subc } );
+        subc[ PROTO ] = merge( new F(), overrides );
+        subc[ PROTO ].constructor = subc;
     }
 
 
