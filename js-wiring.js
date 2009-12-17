@@ -288,14 +288,15 @@
  */
 var Wiring = (function() {
     var OBJECT = Object,
-        NULL = null;
+        NULL = null,
+        TOSTRING = OBJECT.prototype.toString;
 
     /**
      * Array detection utility
      * @param {Object} val
      */
     function isArray( val ) {
-        return OBJECT.prototype.toString.call( val ) === '[object Array]';
+        return TOSTRING.call( val ) === '[object Array]';
     }
 
 
