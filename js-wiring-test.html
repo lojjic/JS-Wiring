@@ -423,7 +423,7 @@
                 testObjectPropMerge: {
                     parent: 'testObjectPropMergeParent',
                     properties: {
-                        prop: Wiring.mergeUp( { childProp: 'fromChild' } )
+                        prop: Wiring.merge( { childProp: 'fromChild' } )
                     }
                 },
                 testObjectPropNonMerge: {
@@ -450,7 +450,7 @@
                 testArrayPropMerge: {
                     parent: 'testArrayPropMergeParent',
                     properties: {
-                        prop: Wiring.mergeUp( ['child1','child2'] )
+                        prop: Wiring.merge( ['child1','child2'] )
                     }
                 },
                 testArrayPropNonMerge: {
@@ -475,7 +475,7 @@
                 },
                 testObjectCtorMerge: {
                     parent: 'testObjectCtorMergeParent',
-                    ctorArgs: [ Wiring.mergeUp( { childProp: 'fromChild' } ) ]
+                    ctorArgs: [ Wiring.merge( { childProp: 'fromChild' } ) ]
                 },
                 testObjectCtorNonMerge: {
                     parent: 'testObjectCtorMergeParent',
@@ -497,7 +497,7 @@
                 },
                 testArrayMerge: {
                     parent: 'testArrayMergeParent',
-                    ctorArgs: [ Wiring.mergeUp( ['child1','child2'] ) ]
+                    ctorArgs: [ Wiring.merge( ['child1','child2'] ) ]
                 },
                 testArrayNonMerge: {
                     parent: 'testArrayMergeParent',

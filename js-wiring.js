@@ -179,7 +179,7 @@
  * This is particularly useful for array items, where you want to have a base set of members
  * defined in the parent, and let the child definition add to that list.</p>
  *
- * <p>To support this, you can use the <code>mergeUp</code> function to mark an object or array
+ * <p>To support this, you can use the <code>merge</code> function to mark an object or array
  * property or constructor argument so that it will be merged with its parent.  If used on an
  * Object, its properties will be merged with the corresponding Object in its parent.  If used
  * on an Array, the items of the child Array will be appended to the items of the corresponding
@@ -194,8 +194,8 @@
  *     },
  *     childObject: {
  *         properties: {
- *             objectProp: Wiring.mergeUp( { childProp: 'bar' } ),
- *             arrayProp: Wiring.mergeUp( [ 'childMember' ] )
+ *             objectProp: Wiring.merge( { childProp: 'bar' } ),
+ *             arrayProp: Wiring.merge( [ 'childMember' ] )
  *         }
  *     }
  * } );</code></pre>
@@ -674,7 +674,7 @@ var Wiring = (function() {
          * in its parent definition rather than overwriting it.
          * @param {Object|Array} obj The object to be marked
          */
-        mergeUp: function( obj ) {
+        merge: function( obj ) {
             return new Mergeable( obj );
         },
 
