@@ -190,6 +190,23 @@
             return obj.two instanceof Foo && obj.two.one === 2;
         } );
 
+        runTest( 'Dereference array of wired objects', function() {
+            Wiring.add( {
+                testArrayRefTarget : {
+                    type: Foo,
+                    properties: {
+                        one: 2
+                    }
+                },
+                testArrayRef : {
+                    type: Array,
+                    properties: [ '{ref:testArrayRefTarget}' ]
+                }
+            } );
+            var obj = Wiring.get( 'testArrayRef' );
+            return obj[0] instanceof Foo && obj[0].one === 2;
+        } );
+
         runTest( 'Dereference members of property Object/Array values', function() {
             Wiring.add( {
                 testMemberRefTarget: {
