@@ -98,6 +98,16 @@
             return obj instanceof Foo && obj.one === 1 && obj.two === null;
         });
 
+        runTest( 'Basic Array instantiation', function() {
+            Wiring.add( {
+                testBasicArray: {
+                    type: Array
+                }
+            } );
+            var obj = Wiring.get( 'testBasicArray' );
+            return obj instanceof Array && obj.length === 0;
+        } );
+
         runTest( 'Singleton behavior', function() {
             Wiring.add( {
                 testSingleton: {
@@ -119,6 +129,20 @@
             var obj1 = Wiring.get( 'testNonSingleton' ),
                 obj2 = Wiring.get( 'testNonSingleton' );
             return obj1 !== obj2;
+        } );
+
+        runTest( 'Array value injection', function() {
+            Wiring.add( {
+                testArrayValues: {
+                    type: Array,
+                    properties: [ 'one', 'two' ]
+                }
+            } );
+            var obj = Wiring.get( 'testArrayValues' );
+            return obj instanceof Array &&
+                obj.length === 2 &&
+                obj[0] === 'one' &&
+                obj[1] === 'two';
         } );
 
         runTest( 'Direct property injection', function() {
