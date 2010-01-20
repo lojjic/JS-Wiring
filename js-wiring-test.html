@@ -552,6 +552,61 @@
                    nonMergedObj.oneByCtor.length === 2 && nonMergedObj.oneByCtor[1] === 'child2';
         } );
 
+        runTest( 'Modifying an object definition', function() {
+            Wiring.add( {
+                modObj: {
+                    type: Foo
+                }
+            } );
+            Wiring.modify( {
+                modObj: {
+                    type: Baz
+                }
+            } );
+
+            var obj = Wiring.get( 'modObj' );
+            return obj instanceof Baz;
+        } );
+
+        runTest( 'Modifying Array values', function() {
+            Wiring.add( {
+                modArray: {
+                    type: Array,
+                    properties: [ 'one', 'two' ]
+                }
+            } );
+            Wiring.modify( {
+                modArray: {
+                    properties: Wiring.merge( [ 'three', 'four' ] )
+                }
+            } );
+
+            var obj = Wiring.get( 'modArray' );
+            return obj instanceof Array &&
+                obj.length === 4 &&
+                obj[0] === 'one' &&
+                obj[1] === 'two' &&
+                obj[2] === 'three' &&
+                obj[3] === 'four';
+        } );
+
+        runTest( 'Modifying a non-existant definition', function() {
+            var obj,
+                pass = false;
+            try {
+                Wiring.modify( {
+                    modNoObj: {
+                        type: Baz
+                    }
+                } );
+            } catch( e ) {
+                pass = true;
+            }
+
+            obj = Wiring.get( 'modNoObj' );
+            return pass && obj === null;
+        } );
+
         runTest( 'Object "type" as string', function() {
             Wiring.add( {
                 typeAsString: {

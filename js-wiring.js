@@ -404,6 +404,13 @@ var Wiring = (function() {
     Def.PLACEHOLDER_RE = /^\{(\w+):(.+)\}$/;
     extend( Def, OBJECT, {
         /**
+         * modify the current object definition
+         */
+        modify: function( def ) {
+            merge( this.cfg, def );
+        },
+
+        /**
          * Expand a property or ctorArgs definition value into a real value that can be
          * injected into an object instance. Makes deep copies of arrays/objects, and
          * dereferences placeholder string values by invoking the matching ValueResolver.
@@ -638,6 +645,22 @@ var Wiring = (function() {
             for( var p in def ) {
                 if( def.hasOwnProperty( p ) ) {
                     this._defs[ p ] = new Def( this, def[ p ] );
+                }
+            }
+        },
+
+        /**
+         * Modify a new object definition in this wiring container
+         * @param def
+         */
+        modify: function( def ) {
+            for( var p in def ) {
+                if( def.hasOwnProperty( p ) ) {
+                    if( this._defs[ p ] ) {
+                        this._defs[ p ].modify( def[ p ] );
+                    } else {
+                        throw new Error( 'attempt to modify non-existant object definition: "' + p +  '"' );
+                    }
                 }
             }
         },
