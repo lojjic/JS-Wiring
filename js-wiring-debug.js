@@ -50,7 +50,8 @@
 
     var W = Wiring.constructor,
         proto = W.prototype,
-        _get = proto.get;
+        _get = proto.get,
+        _modify = proto.modify;
 
     /**
      * Debug flag; true by default, set this to false to disable debug logic
@@ -67,6 +68,7 @@
     proto.ERR_TYPE_NONEXISTENT = 'Wiring: The object named "{0}" is configured with a "type" that is undefined or not a function.';
     proto.ERR_INITMETHOD_NOT_STRING = 'Wiring: The configured "initMethod" for the object named "{0}" is not a string.';
     proto.ERR_INITMETHOD_NONEXISTENT = 'Wiring: The configured "initMethod" for the object named "{0}" does not exist in the prototype.';
+    proto.ERR_MODIFY_NONEXISTENT = 'Wiring: Attempted to modify a nonexistent object definition: "{0}"';
 
     /**
      * Override get method so that it adds a __wiring_name__ property to each
@@ -123,6 +125,21 @@
         }
         else {
             return _get.call( this, name );
+        }
+    };
+
+    /**
+     * Override modify method to validate the def(s) being modified actually exist
+     */
+    proto.modify = function( def ) {
+        for( var p in def ) {
+            if( def.hasOwnProperty( p ) ) {
+                if( !this._defs[ p ] ) {
+                    throw new Error( this.ERR_MODIFY_NONEXISTENT.replace( "{0}", p ) );
+                } else {
+                    return _modify.call( this, def );
+                }
+            }
         }
     };
 

@@ -638,8 +638,8 @@ var Wiring = (function() {
     }
     extend( W, OBJECT, {
         /**
-         * Add a new object definition to this wiring container
-         * @param def
+         * Add one or more new object definitions to this wiring container
+         * @param {Object} def
          */
         add: function( def ) {
             for( var p in def ) {
@@ -650,17 +650,13 @@ var Wiring = (function() {
         },
 
         /**
-         * Modify a new object definition in this wiring container
-         * @param def
+         * Modify one or more existing object definitions in this wiring container.
+         * @param {Object} def
          */
         modify: function( def ) {
             for( var p in def ) {
                 if( def.hasOwnProperty( p ) ) {
-                    if( this._defs[ p ] ) {
-                        this._defs[ p ].modify( def[ p ] );
-                    } else {
-                        throw new Error( 'attempt to modify non-existant object definition: "' + p +  '"' );
-                    }
+                    this._defs[ p ].modify( def[ p ] );
                 }
             }
         },
