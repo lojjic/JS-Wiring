@@ -409,6 +409,54 @@
             return obj.oneByCtor === 1 && obj.twoByCtor === 'overridden';
         } );
 
+        runTest( 'Factory - FactoryResolver', function() {
+            Wiring.add( {
+                testFactoryResolverTarget : {
+                    type: Foo,
+                    singleton: false
+                },
+                testFactoryResolverCreator: {
+                    type: Bar,
+                    properties: {
+                        factory: '{factory:testFactoryResolverTarget}'
+                    }
+                }
+            } );
+            var creator = Wiring.get( 'testFactoryResolverCreator' ),
+                obj = creator.factory.createInstance();
+            return (creator.factory instanceof Wiring.Factory) &&
+                   (obj instanceof Foo) &&
+                   obj.one === 1;
+        } );
+
+        runTest( 'Factory - FactoryResolver cached Factory', function() {
+            Wiring.add( {
+                testFactoryResolverCacheTarget : {
+                    type: Foo,
+                    singleton: false
+                },
+                testFactoryResolverCacheCreator1: {
+                    type: Bar,
+                    properties: {
+                        factory: '{factory:testFactoryResolverTarget}'
+                    }
+                },
+                testFactoryResolverCacheCreator2: {
+                    type: Bar,
+                    properties: {
+                        factory: '{factory:testFactoryResolverTarget}'
+                    }
+                }
+            } );
+            var creator1 = Wiring.get( 'testFactoryResolverCacheCreator1' ),
+                creator2 = Wiring.get( 'testFactoryResolverCacheCreator2' )
+
+            return (creator1.factory instanceof Wiring.Factory) &&
+                   (creator2.factory instanceof Wiring.Factory) &&
+                   creator1 !== creator2 &&
+                   creator1.factory === creator2.factory;
+        } );
+
         runTest( 'WiringAware', function() {
             Wiring.add( {
                 testWiringAware: {

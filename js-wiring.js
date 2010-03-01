@@ -39,7 +39,7 @@
  * object structure rather than XML.  Like Spring it supports constructor-argument
  * injection and setter-method injection, but also supports direct property injection
  * which is more natural in the JavaScript world.  Like Spring, object definitions can
- * inherit from one another.  Unlike Spring, objects are not instantiated until they 
+ * inherit from one another.  Unlike Spring, objects are not instantiated until they
  * are requested directly or are required to satisfy another managed object's dependencies,
  * which improves performance.</p>
  *
@@ -64,9 +64,9 @@
  * <p>With the above example, when some piece of code calls <code>Wiring.get( 'myObject' )</code>,
  * the container will find this definition, create an instance of the <code>MyJSClass</code>
  * class, and sets that instance's <code>someProp</code> property to the string value 'some value'.</p>
- * 
+ *
  * <p>The real good stuff happens when you configure two or more objects and wire them together:</p>
- * 
+ *
  * <pre><code>Wiring.add( {
  *     objectOne: {
  *         type: MyJSClass,
@@ -100,21 +100,22 @@
  *
  * <p>Below are all the possible properties of the definition object. When the value type "VALUE" is
  * referenced, this means that a property can have a value of:</p>
- * 
+ *
  * <ul>
  *     <li>A literal value: String, Number, or Boolean</li>
  *     <li>A value "placeholder". This is a String that begins and ends with curly braces and contains a prefix that
  *         matches that of a registered ValueResolver instance.  The placeholder string will be replaced by an
- *         expanded value returned by the <code>ValueResolver</code>.  By default the container understands 
- *         only the "{ref:objectDefId}" placeholder, which gets replaced by an instantiated and fully-configured
- *         object from another definition in the wiring container.  This is how managed objects are
- *         wired into other managed objects as dependencies.</li>
+ *         expanded value returned by the <code>ValueResolver</code>.  By default the container understands
+ *         the "{ref:objectDefId}" placeholder, which gets replaced by an instantiated and fully-configured
+ *         object from another definition in the wiring container, and the "{factory:objectDefId}" placehodler,
+ *         which creates a Wiring.Factory object for creating objects from another definition in the wiring container.
+ *         This is how managed objects are wired into other managed objects as dependencies.</li>
  *     <li>An Array or Object; when evaluated by the container these will be deep-copied into a new
  *         Array/Object.  During the copy each member will be treated as a VALUE of its own,
  *         allowing recursive value expansion.  In other words, value placeholders such as
  *         "{ref:objectDefId}" can occur at any depth in the object/array structure.
  * </ul>
- * 
+ *
  * <table>
  *     <thead>
  *         <tr>
@@ -159,7 +160,7 @@
  *             <td>A name-value mapping of property names to VALUEs. Each property will be
  *                 injected into the object after it is instantiated. If there is a "setter"
  *                 method on the object matching the property name (e.g. <code>setMyProp()</code>),
- *                 that method will be used to inject the value; otherwise the value will be set 
+ *                 that method will be used to inject the value; otherwise the value will be set
  *                 directly as a member property on the object.</td>
  *         </tr>
  *         <tr>
@@ -207,7 +208,7 @@
  *     "objectProp": { "parentProp": "foo", "childProp": "bar" },
  *     "arrayProp": [ "parentMember", "childMember" ]
  * }</code></pre>
- * 
+ *
  * <h2>Factories</h2>
  *
  * <p>While the dependency injection pattern is great for configuring single dependencies
@@ -254,33 +255,52 @@
  * <pre><code>this.myFactory.createInstance( { properties: { prop1: 'some other value' } } )</code></pre>
  *
  * <p>This call will return an instance of MyJSClass with properties prop1='some other value' and prop2='some value 2'.</p>
- * 
+ *
+ * <p>A factory object can also be created using the FactoryResolver, for example the above code could be as follows:</p>
+
+ * <pre><code>Wiring.add( {
+ *     objectOne: {
+ *         type: MyJSClass,
+ *         singleton: false,
+ *         properties: {
+ *             prop1: 'some value 1'
+ *             prop2: 'some value 2'
+ *         }
+ *     },
+ *     objectTwo: {
+ *         type: MyJSClass2,
+ *         properties: {
+ *             myFactory: '{factory:objectOne}'
+ *         }
+ *     }
+ * } );</code></pre>
+ *
  * <h2>Custom ValueResolvers</h2>
- * 
+ *
  * <p>As mentioned above, in addition to the built-in "{ref:objectDefId}" placeholder, you can
  * create custom <code>ValueResolver</code>s and register them with arbitrary prefixes. For
  * example, you might want to define a "{cfg:foo}" placeholder which resolves configuration values
  * from some other configuration object. To do this, you would extend <code>Wiring.ValueResolver</code>
  * like so:</p>
- * 
+ *
  * <pre><code>function CfgResolver() {}
  * CfgResolver.prototype = new Wiring.ValueResolver();
  * CfgResolver.prototype.prefix = 'cfg';
  * CfgResolver.prototype.resolve = function( key ) {
  *     return someConfigObject.getConfigValue( key );
  * }
- * 
+ *
  * Wiring.addValueResolver( new CfgResolver() );</code></pre>
- * 
+ *
  * <p>Now any "{cfg:foo}" placeholders in object definitions will get their values from the CfgResolver.
  * This is a handy abstraction because the object configurations do not have to implement logic
  * concerning how to retrieve the values, and if the underlying source of the values changes then you
  * only have to modify the ValueResolver implementation and not the configurations themselves.</p>
- * 
+ *
  * <h2>WiringAware</h2>
  *
  * <p>TODO</p>
- * 
+ *
  * <h2>Examples</h2>
  *
  * <p>TODO</p>
@@ -627,6 +647,31 @@ var Wiring = (function() {
         }
     } );
 
+    /**
+     * Built-in ValueResolver implementation which resolves string values starting with
+     * "{factory:*}" to instances Wiring.Factory.  The value following the prefix
+     * will be used to identify the wired object to be created by "createInstance".
+     * An instance of this resolver will automatically be registered with the Wiring
+     * container; to override it simply register another resolver with the same prefix.
+     * @private
+     */
+    function FactoryResolver() {
+        this.factories = {};
+    }
+    extend( FactoryResolver, ValueResolver, {
+        prefix: "factory",
+        resolve: function( key ) {
+            if( ! ( key in this.factories ) ) {
+                this.factories[key] = ( new Def( this.wiring, {
+                    type: Factory,
+                    properties: {
+                        refId: key
+                    }
+                } ) ).getInstance();
+            }
+            return this.factories[key];
+        }
+    } );
 
     /**
      * The main wiring class
@@ -635,6 +680,7 @@ var Wiring = (function() {
         this._defs = {};
         this._resolvers = {};
         this.addValueResolver( new RefResolver() );
+        this.addValueResolver( new FactoryResolver() );
     }
     extend( W, OBJECT, {
         /**
