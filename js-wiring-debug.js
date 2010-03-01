@@ -132,12 +132,16 @@
      * Override modify method to validate the def(s) being modified actually exist
      */
     proto.modify = function( def ) {
-        for( var p in def ) {
-            if( def.hasOwnProperty( p ) ) {
-                if( !this._defs[ p ] ) {
-                    throw new Error( this.ERR_MODIFY_NONEXISTENT.replace( "{0}", p ) );
-                } else {
-                    return _modify.call( this, def );
+        if( ! this.debug ) {
+            return _modify.call( this, def );
+        } else {
+            for( var p in def ) {
+                if( def.hasOwnProperty( p ) ) {
+                    if( !this._defs[ p ] ) {
+                        throw new Error( this.ERR_MODIFY_NONEXISTENT.replace( "{0}", p ) );
+                    } else {
+                        return _modify.call( this, def );
+                    }
                 }
             }
         }

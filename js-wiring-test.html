@@ -811,6 +811,23 @@
             return false;
         } );
 
+        runTest( 'Debug addon: validating modifing non-existant object', function() {
+            Wiring.debug = true;
+
+            try {
+                Wiring.modify( {
+                    modNoObj: {
+                        type: Baz
+                    }
+                } );
+            } catch(e) {
+                if( e.message === Wiring.ERR_MODIFY_NONEXISTENT.replace( '{0}', 'modNoObj' ) ) {
+                    return true;
+                }
+            }
+            return false;
+        } );
+
         document.write( '<p class="timer">all tests completed in ' + ( new Date().getTime() - start ) + 'ms</p>' );
 
     </script>
