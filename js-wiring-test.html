@@ -18,7 +18,13 @@
 
     <script type="text/javascript">
 
+        function setUp() {
+            Wiring = new Wiring.constructor();
+            Wiring.debug = false;
+        }
+
         function runTest( label, fn ) {
+            setUp();
             var result = '', error = '', start, end;
             try {
                 start = new Date().getTime();
@@ -83,8 +89,6 @@
         TestValueResolver.prototype.resolve = function( key ) {
             return "dingle_" + key + "_berry";
         };
-
-        Wiring.debug = false;
 
         var start = new Date().getTime();
 
