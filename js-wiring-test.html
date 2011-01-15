@@ -674,6 +674,21 @@
             return Wiring.isDefined( 'thisisnotanobject' ) === false;
         } );
 
+        runTest( 'Injecting an already instantiated object by wrapping it in a function', function() {
+            var foo, bar = new Bar();
+            Wiring.add( {
+                foo: {
+                    type: Foo,
+                    properties: {
+                        two: function(){ return bar; }
+                    }
+                }
+            } );
+
+            foo = Wiring.get( 'foo' );
+            return foo.two instanceof Bar;
+        } );
+
 
         /// Start testing of debug addon
 

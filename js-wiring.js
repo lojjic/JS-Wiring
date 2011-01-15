@@ -438,6 +438,11 @@ var Wiring = (function() {
         expand: function( val ) {
             var i, v, p, phMatch, resolver, result;
 
+            // If the property value is a function, just call the function and use the results literally
+            if( typeof val === 'function' ) {
+                return val();
+            }
+
             // Deep copy of array members
             if( isArray( val ) ) {
                 result = [];
